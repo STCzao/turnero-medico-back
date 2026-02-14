@@ -3,13 +3,8 @@ using turnero_medico_backend.Models.Entities;
 
 namespace turnero_medico_backend.Data
 {
-    public class ApplicationDbContext : DbContext
+    public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : DbContext(options)
     {
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
-
-        {
-        }
-
         public DbSet<Paciente> Pacientes { get; set; }
         public DbSet<Doctor> Doctores { get; set; }
         public DbSet<Turno> Turnos { get; set; }

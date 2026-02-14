@@ -1,23 +1,15 @@
 using Microsoft.AspNetCore.Mvc;
 using turnero_medico_backend.DTOs.PacienteDTOs;
+using turnero_medico_backend.Models.Entities;
 using turnero_medico_backend.Services.Interfaces;
 
 namespace turnero_medico_backend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class PacientesController : ControllerBase
+    public class PacientesController(IPacienteService _service) : ControllerBase
     {
-        private readonly IPacienteService _service;
-
-        public PacientesController(IPacienteService service)
-        {
-            _service = service;
-        }
-
-        /// <summary>
-        /// Obtiene todos los pacientes registrados
-        /// </summary>
+        
         [HttpGet]
         public async Task<ActionResult<IEnumerable<PacienteReadDto>>> GetAll()
         {
@@ -32,9 +24,7 @@ namespace turnero_medico_backend.Controllers
             }
         }
 
-        /// <summary>
-        /// Obtiene un paciente por su ID
-        /// </summary>
+
         [HttpGet("{id}")]
         public async Task<ActionResult<PacienteReadDto>> GetById(int id)
         {
@@ -52,9 +42,6 @@ namespace turnero_medico_backend.Controllers
             }
         }
 
-        /// <summary>
-        /// Crea un nuevo paciente
-        /// </summary>
         [HttpPost]
         public async Task<ActionResult<PacienteReadDto>> Create(PacienteCreateDto dto)
         {
@@ -72,9 +59,7 @@ namespace turnero_medico_backend.Controllers
             }
         }
 
-        /// <summary>
-        /// Actualiza un paciente existente
-        /// </summary>
+
         [HttpPut("{id}")]
         public async Task<ActionResult<PacienteReadDto>> Update(int id, PacienteUpdateDto dto)
         {
@@ -98,9 +83,7 @@ namespace turnero_medico_backend.Controllers
             }
         }
 
-        /// <summary>
-        /// Elimina un paciente
-        /// </summary>
+
         [HttpDelete("{id}")]
         public async Task<ActionResult> Delete(int id)
         {

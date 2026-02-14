@@ -1,23 +1,15 @@
 using Microsoft.AspNetCore.Mvc;
 using turnero_medico_backend.DTOs.TurnoDTOs;
+using turnero_medico_backend.Services;
 using turnero_medico_backend.Services.Interfaces;
 
 namespace turnero_medico_backend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class TurnosController : ControllerBase
+    public class TurnosController(TurnoService _service) : ControllerBase
     {
-        private readonly ITurnoService _service;
 
-        public TurnosController(ITurnoService service)
-        {
-            _service = service;
-        }
-
-        /// <summary>
-        /// Obtiene todos los turnos registrados
-        /// </summary>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<TurnoReadDto>>> GetAll()
         {
@@ -32,9 +24,7 @@ namespace turnero_medico_backend.Controllers
             }
         }
 
-        /// <summary>
-        /// Obtiene los turnos de un paciente específico
-        /// </summary>
+
         [HttpGet("paciente/{pacienteId}")]
         public async Task<ActionResult<IEnumerable<TurnoReadDto>>> GetByPaciente(int pacienteId)
         {
@@ -52,9 +42,6 @@ namespace turnero_medico_backend.Controllers
             }
         }
 
-        /// <summary>
-        /// Obtiene los turnos de un doctor específico
-        /// </summary>
         [HttpGet("doctor/{doctorId}")]
         public async Task<ActionResult<IEnumerable<TurnoReadDto>>> GetByDoctor(int doctorId)
         {
@@ -72,9 +59,7 @@ namespace turnero_medico_backend.Controllers
             }
         }
 
-        /// <summary>
-        /// Obtiene un turno por su ID
-        /// </summary>
+
         [HttpGet("{id}")]
         public async Task<ActionResult<TurnoReadDto>> GetById(int id)
         {
@@ -92,9 +77,7 @@ namespace turnero_medico_backend.Controllers
             }
         }
 
-        /// <summary>
-        /// Crea un nuevo turno
-        /// </summary>
+
         [HttpPost]
         public async Task<ActionResult<TurnoReadDto>> Create(TurnoCreateDto dto)
         {
@@ -116,9 +99,7 @@ namespace turnero_medico_backend.Controllers
             }
         }
 
-        /// <summary>
-        /// Actualiza un turno existente
-        /// </summary>
+
         [HttpPatch("{id}")]
         public async Task<ActionResult<TurnoReadDto>> Update(int id, TurnoUpdateDto dto)
         {
@@ -146,9 +127,6 @@ namespace turnero_medico_backend.Controllers
             }
         }
 
-        /// <summary>
-        /// Elimina un turno
-        /// </summary>
         [HttpDelete("{id}")]
         public async Task<ActionResult> Delete(int id)
         {

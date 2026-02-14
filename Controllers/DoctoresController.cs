@@ -1,23 +1,15 @@
 using Microsoft.AspNetCore.Mvc;
 using turnero_medico_backend.DTOs.DoctorDTOs;
+using turnero_medico_backend.Services;
 using turnero_medico_backend.Services.Interfaces;
 
 namespace turnero_medico_backend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class DoctoresController : ControllerBase
+    public class DoctoresController(DoctorService _service) : ControllerBase
     {
-        private readonly IDoctorService _service;
 
-        public DoctoresController(IDoctorService service)
-        {
-            _service = service;
-        }
-
-        /// <summary>
-        /// Obtiene todos los doctores registrados
-        /// </summary>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<DoctorReadDto>>> GetAll()
         {
@@ -32,9 +24,7 @@ namespace turnero_medico_backend.Controllers
             }
         }
 
-        /// <summary>
-        /// Obtiene doctores por especialidad
-        /// </summary>
+
         [HttpGet("especialidad/{especialidad}")]
         public async Task<ActionResult<IEnumerable<DoctorReadDto>>> GetByEspecialidad(string especialidad)
         {
@@ -52,9 +42,7 @@ namespace turnero_medico_backend.Controllers
             }
         }
 
-        /// <summary>
-        /// Obtiene un doctor por su ID
-        /// </summary>
+
         [HttpGet("{id}")]
         public async Task<ActionResult<DoctorReadDto>> GetById(int id)
         {
@@ -72,9 +60,7 @@ namespace turnero_medico_backend.Controllers
             }
         }
 
-        /// <summary>
-        /// Crea un nuevo doctor
-        /// </summary>
+
         [HttpPost]
         public async Task<ActionResult<DoctorReadDto>> Create(DoctorCreateDto dto)
         {
@@ -92,9 +78,7 @@ namespace turnero_medico_backend.Controllers
             }
         }
 
-        /// <summary>
-        /// Actualiza un doctor existente
-        /// </summary>
+
         [HttpPut("{id}")]
         public async Task<ActionResult<DoctorReadDto>> Update(int id, DoctorUpdateDto dto)
         {
@@ -117,10 +101,8 @@ namespace turnero_medico_backend.Controllers
                 return BadRequest(new { mensaje = ex.Message });
             }
         }
+        
 
-        /// <summary>
-        /// Elimina un doctor
-        /// </summary>
         [HttpDelete("{id}")]
         public async Task<ActionResult> Delete(int id)
         {
