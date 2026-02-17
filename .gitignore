@@ -132,6 +132,10 @@ yarn-error.log*
 appsettings.Development.json
 appsettings.Local.json
 
+# User Secrets
+.usersecretsrc
+secrets.json
+
 # Rider
 .idea/
 *.sln.iml

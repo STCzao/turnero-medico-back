@@ -10,10 +10,11 @@
 using System;
 using System.Reflection;
 
+[assembly: Microsoft.Extensions.Configuration.UserSecrets.UserSecretsIdAttribute("35848504-5929-4b84-a263-34ccba063baa")]
 [assembly: System.Reflection.AssemblyCompanyAttribute("turnero-medico-backend")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c89bf3a59a257e589eb3336087bea4aebd714e30")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+326ea342f4fddbdd02fabfc08fb0c8b55ab9eb29")]
 [assembly: System.Reflection.AssemblyProductAttribute("turnero-medico-backend")]
 [assembly: System.Reflection.AssemblyTitleAttribute("turnero-medico-backend")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

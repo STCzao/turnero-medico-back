@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using turnero_medico_backend.Data;
@@ -11,9 +12,11 @@ using turnero_medico_backend.Data;
 namespace turnero_medico_backend.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260216085033_AddIdentityTables")]
+    partial class AddIdentityTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -283,59 +286,6 @@ namespace turnero_medico_backend.Migrations
                     b.ToTable("Doctores");
                 });
 
-            modelBuilder.Entity("turnero_medico_backend.Models.Entities.ObraSocial", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Cobertura")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Nombre")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<decimal>("PorcentajeCobertura")
-                        .HasColumnType("numeric");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("ObrasSociales");
-                });
-
-            modelBuilder.Entity("turnero_medico_backend.Models.Entities.ObraSocialEspecialidad", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Especialidad")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("FechaCreacion")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("ObraSocialId")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("RequiereValidacionExterna")
-                        .HasColumnType("boolean");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ObraSocialId", "Especialidad")
-                        .IsUnique();
-
-                    b.ToTable("ObrasSocialesEspecialidades");
-                });
-
             modelBuilder.Entity("turnero_medico_backend.Models.Entities.Paciente", b =>
                 {
                     b.Property<int>("Id")
@@ -356,9 +306,6 @@ namespace turnero_medico_backend.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<bool>("EsMayorDeEdad")
-                        .HasColumnType("boolean");
-
                     b.Property<DateTime>("FechaNacimiento")
                         .HasColumnType("timestamp with time zone");
 
@@ -366,29 +313,14 @@ namespace turnero_medico_backend.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("NumeroAfiliado")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int?>("ObraSocialId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ResponsableId")
-                        .HasColumnType("text");
-
                     b.Property<string>("Telefono")
                         .IsRequired()
                         .HasColumnType("text");
-
-                    b.Property<int>("TipoPago")
-                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
                     b.HasIndex("Dni")
                         .IsUnique();
-
-                    b.HasIndex("ObraSocialId");
 
                     b.ToTable("Pacientes");
                 });
@@ -401,13 +333,6 @@ namespace turnero_medico_backend.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("CreatedByUserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.Property<int>("DoctorId")
                         .HasColumnType("integer");
 
@@ -418,34 +343,16 @@ namespace turnero_medico_backend.Migrations
                     b.Property<DateTime>("FechaHora")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateTime?>("FechaValidacion")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<string>("Motivo")
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("MotivoRechazo")
-                        .HasColumnType("text");
-
-                    b.Property<string>("NotasFacturacion")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int?>("ObraSocialId")
-                        .HasColumnType("integer");
-
                     b.Property<int>("PacienteId")
                         .HasColumnType("integer");
-
-                    b.Property<string>("ValidadoPorDoctorId")
-                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
                     b.HasIndex("DoctorId");
-
-                    b.HasIndex("ObraSocialId");
 
                     b.HasIndex("PacienteId");
 
@@ -503,27 +410,6 @@ namespace turnero_medico_backend.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("turnero_medico_backend.Models.Entities.ObraSocialEspecialidad", b =>
-                {
-                    b.HasOne("turnero_medico_backend.Models.Entities.ObraSocial", "ObraSocial")
-                        .WithMany("Especialidades")
-                        .HasForeignKey("ObraSocialId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ObraSocial");
-                });
-
-            modelBuilder.Entity("turnero_medico_backend.Models.Entities.Paciente", b =>
-                {
-                    b.HasOne("turnero_medico_backend.Models.Entities.ObraSocial", "ObraSocial")
-                        .WithMany("Pacientes")
-                        .HasForeignKey("ObraSocialId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("ObraSocial");
-                });
-
             modelBuilder.Entity("turnero_medico_backend.Models.Entities.Turno", b =>
                 {
                     b.HasOne("turnero_medico_backend.Models.Entities.Doctor", "Doctor")
@@ -531,11 +417,6 @@ namespace turnero_medico_backend.Migrations
                         .HasForeignKey("DoctorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("turnero_medico_backend.Models.Entities.ObraSocial", "ObraSocial")
-                        .WithMany()
-                        .HasForeignKey("ObraSocialId")
-                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("turnero_medico_backend.Models.Entities.Paciente", "Paciente")
                         .WithMany("Turnos")
@@ -545,21 +426,12 @@ namespace turnero_medico_backend.Migrations
 
                     b.Navigation("Doctor");
 
-                    b.Navigation("ObraSocial");
-
                     b.Navigation("Paciente");
                 });
 
             modelBuilder.Entity("turnero_medico_backend.Models.Entities.Doctor", b =>
                 {
                     b.Navigation("Turnos");
-                });
-
-            modelBuilder.Entity("turnero_medico_backend.Models.Entities.ObraSocial", b =>
-                {
-                    b.Navigation("Especialidades");
-
-                    b.Navigation("Pacientes");
                 });
 
             modelBuilder.Entity("turnero_medico_backend.Models.Entities.Paciente", b =>
