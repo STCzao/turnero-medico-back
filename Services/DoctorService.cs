@@ -1,3 +1,4 @@
+using AutoMapper;
 using turnero_medico_backend.DTOs.DoctorDTOs;
 using turnero_medico_backend.Models.Entities;
 using turnero_medico_backend.Repositories.Interfaces;
@@ -5,33 +6,40 @@ using turnero_medico_backend.Services.Interfaces;
 
 namespace turnero_medico_backend.Services
 {
-    public class DoctorService(IRepository<Doctor> _repository) : IDoctorService
+    public class DoctorService(
+        IRepository<Doctor> _repository,
+        IMapper _mapper,
+        CurrentUserService _currentUserService
+    ) : IDoctorService
     {
 
         public async Task<IEnumerable<DoctorReadDto>> GetAllAsync()
         {
+            if (!_currentUserService.IsAdmin())
+                throw new UnauthorizedAccessException("No tienes permisos para ver el listado de doctores.");
+
             var doctors = await _repository.GetAllAsync();
-            return doctors.Select(d => Mapper.MapToDoctorReadDto(d));
+            return doctors.Select(d => _mapper.Map<DoctorReadDto>(d));
         }
 
         public async Task<IEnumerable<DoctorReadDto>> GetByEspecialidadAsync(string especialidad)
         {
             var doctors = await _repository.FindAsync(d => 
-                d.Especialidad.ToLower() == especialidad.ToLower());
-            return doctors.Select(d => Mapper.MapToDoctorReadDto(d));
+                string.Equals(d.Especialidad, especialidad, StringComparison.OrdinalIgnoreCase));
+            return doctors.Select(_mapper.Map<DoctorReadDto>);
         }
 
         public async Task<DoctorReadDto?> GetByIdAsync(int id)
         {
             var doctor = await _repository.GetByIdAsync(id);
-            return doctor == null ? null : Mapper.MapToDoctorReadDto(doctor);
+            return doctor == null ? null : _mapper.Map<DoctorReadDto>(doctor);
         }
 
         public async Task<DoctorReadDto> CreateAsync(DoctorCreateDto dto)
         {
-            var doctor = Mapper.MapToDoctor(dto);
+            var doctor = _mapper.Map<Doctor>(dto);
             var createdDoctor = await _repository.AddAsync(doctor);
-            return Mapper.MapToDoctorReadDto(createdDoctor);
+            return _mapper.Map<DoctorReadDto>(createdDoctor);
         }
 
         public async Task<DoctorReadDto?> UpdateAsync(int id, DoctorUpdateDto dto)
@@ -40,9 +48,9 @@ namespace turnero_medico_backend.Services
             if (doctor == null)
                 return null;
 
-            var updatedDoctor = Mapper.MapToDoctor(dto, doctor);
+            var updatedDoctor = _mapper.Map(dto, doctor);
             await _repository.UpdateAsync(updatedDoctor);
-            return Mapper.MapToDoctorReadDto(updatedDoctor);
+            return _mapper.Map<DoctorReadDto>(updatedDoctor);
         }
 
         public async Task<bool> DeleteAsync(int id)
