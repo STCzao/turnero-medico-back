@@ -25,10 +25,10 @@ namespace turnero_medico_backend.Models.Entities
         public string NotasFacturacion { get; set; } = string.Empty;  // Ej: "OSDE 80%" o "Pago particular"
         
         // ===== NUEVO: Validación de cobertura por doctor =====
-        /// <summary>
+        /// <>
         /// Si RequiereValidacionExterna=true en ObraSocialEspecialidad, doctor debe validar
         /// Estados: PendienteValidacionDoctor → Aceptado/Rechazado
-        /// </summary>
+        /// </>
         public string? MotivoRechazo { get; set; }  // null si Aceptado; "No cubre este caso" si Rechazado
         
         public DateTime? FechaValidacion { get; set; }  // Cuándo doctor validó externamente

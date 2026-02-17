@@ -15,8 +15,8 @@ namespace turnero_medico_backend.Services
     }
 
     public class AuthService(
-        UserManager<ApplicationUser> userManager, 
-        RoleManager<ApplicationRole> roleManager, 
+        UserManager<ApplicationUser> userManager,
+        RoleManager<ApplicationRole> roleManager,
         IConfiguration configuration,
         IRepository<Paciente> pacienteRepository) : IAuthService
     {
@@ -26,7 +26,7 @@ namespace turnero_medico_backend.Services
         private readonly IRepository<Paciente> _pacienteRepository = pacienteRepository;
 
         /// Registra un nuevo usuario en el sistema
-        
+
         public async Task<(bool Success, string Message)> RegisterAsync(string email, string password, string nombre, string apellido, string rol)
         {
             try
@@ -70,9 +70,8 @@ namespace turnero_medico_backend.Services
 
                 await _userManager.AddToRoleAsync(newUser, rol);
 
-                // ===== NUEVA LÓGICA: Auto-liberar ResponsableId si es transición a autonomía =====
-                // Si alguien se registra y tiene un Paciente con ResponsableId, significa que era un dependiente
-                // que ahora se está volviendo autónomo (ej: Esposo que se registra en la app)
+                // Auto-liberar ResponsableId si es transición a autonomía
+                // Si alguien se registra y tiene un Paciente con ResponsableId, significa que era un dependiente que ahora se está volviendo autónomo
                 if (rol == "Paciente")
                 {
                     var pacienteExistente = await _pacienteRepository.FindAsync(p => p.Email == email);
@@ -84,7 +83,6 @@ namespace turnero_medico_backend.Services
                         {
                             paciente.ResponsableId = null;  // Liberar responsable
                             await _pacienteRepository.UpdateAsync(paciente);
-                            // Nota: Aquí podríamos enviar una notificación a la mamá informando que perdió acceso
                         }
                     }
                 }
@@ -98,7 +96,7 @@ namespace turnero_medico_backend.Services
         }
 
         /// Autentica un usuario y devuelve un token JWT
-        
+
         public async Task<(bool Success, string Token, string Message)> LoginAsync(string email, string password)
         {
             try
@@ -125,7 +123,7 @@ namespace turnero_medico_backend.Services
         }
 
         /// Genera un token JWT firmado para el usuario
-        
+
         private string GenerateJwtToken(ApplicationUser user)
         {
             var secretKey = _configuration["Jwt:SecretKey"];

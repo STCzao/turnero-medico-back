@@ -10,10 +10,8 @@ namespace turnero_medico_backend.Controllers
     [Authorize]
     public class ObrasSocialesController(IObraSocialService _service) : ControllerBase
     {
-        /// <summary>
         /// Obtiene todas las obras sociales
         /// Solo Admin
-        /// </summary>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ObraSocialReadDto>>> GetAll()
         {
@@ -28,10 +26,9 @@ namespace turnero_medico_backend.Controllers
             }
         }
 
-        /// <summary>
         /// Obtiene una obra social por ID
         /// Solo Admin
-        /// </summary>
+        
         [HttpGet("{id}")]
         public async Task<ActionResult<ObraSocialReadDto>> GetById(int id)
         {
@@ -49,10 +46,9 @@ namespace turnero_medico_backend.Controllers
             }
         }
 
-        /// <summary>
         /// Crea una nueva obra social
         /// Solo Admin
-        /// </summary>
+        
         [HttpPost]
         public async Task<ActionResult<ObraSocialReadDto>> Create(ObraSocialCreateDto dto)
         {
@@ -74,10 +70,9 @@ namespace turnero_medico_backend.Controllers
             }
         }
 
-        /// <summary>
         /// Elimina una obra social por ID
         /// Solo Admin
-        /// </summary>
+        
         [HttpDelete("{id}")]
         public async Task<ActionResult> Delete(int id)
         {

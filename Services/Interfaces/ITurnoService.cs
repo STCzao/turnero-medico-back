@@ -13,10 +13,8 @@ namespace turnero_medico_backend.Services.Interfaces
         Task<bool> DeleteAsync(int id);
         Task<bool> ExistAsync(int id);
         
-        // ===== NUEVO: Validación de cobertura por doctor =====
-        /// <summary>
-        /// Doctor valida cobertura en caso especial (requiere validación externa)
-        /// </summary>
+        // Validación de cobertura por doctor 
+        // Doctor valida cobertura en caso especial (requiere validación externa)
         Task<TurnoReadDto?> ValidarCoberturaAsync(int turnoId, TurnoValidarCoberturaDto dto);
     }
 }

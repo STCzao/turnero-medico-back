@@ -7,12 +7,12 @@ using turnero_medico_backend.Models.Entities;
 
 namespace turnero_medico_backend.Mappings
 {
-    /// Perfil de AutoMapper que define todas las conversiones DTO ↔ Entity
+    // Perfil de AutoMapper que define todas las conversiones DTO --> Entity
     public class AutoMapperProfile : Profile
     {
         public AutoMapperProfile()
         {
-            // ObraSocial mappings (NEW)
+            // ObraSocial mappings 
             CreateMap<ObraSocial, ObraSocialReadDto>()
                 .ReverseMap();
 
