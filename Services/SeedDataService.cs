@@ -4,10 +4,8 @@ using turnero_medico_backend.Repositories.Interfaces;
 
 namespace turnero_medico_backend.Services
 {
-    /// <summary>
-    /// Servicio para inicializar datos en la BD
-    /// Se ejecuta al iniciar la aplicación
-    /// </summary>
+    // Servicio para inicializar datos en la BD
+    // Se ejecuta al iniciar la aplicación
     public class SeedDataService(
         RoleManager<ApplicationRole> roleManager,
         UserManager<ApplicationUser> userManager,
@@ -21,9 +19,7 @@ namespace turnero_medico_backend.Services
         private readonly IRepository<ObraSocial> _obraSocialRepository = obraSocialRepository;
         private readonly IRepository<ObraSocialEspecialidad> _obraSocialEspecialidadRepository = obraSocialEspecialidadRepository;
 
-        /// <summary>
-        /// Ejecuta el seeding inicial de datos
-        /// </summary>
+        // Ejecuta el seeding inicial de datos
         public async Task SeedAsync()
         {
             try
@@ -49,9 +45,7 @@ namespace turnero_medico_backend.Services
             }
         }
 
-        /// <summary>
-        /// Crea los tres roles de la aplicación
-        /// </summary>
+        // Crea los tres roles de la aplicación
         private async Task CreateRolesAsync()
         {
             var roles = new[]
@@ -94,9 +88,7 @@ namespace turnero_medico_backend.Services
             }
         }
 
-        /// <summary>
-        /// Crea un usuario admin de prueba (solo si no existe)
-        /// </summary>
+        // Crea un usuario admin de prueba (solo si no existe)
         private async Task CreateAdminUserAsync()
         {
             const string adminEmail = "admin@turneromedico.local";
@@ -137,9 +129,7 @@ namespace turnero_medico_backend.Services
             }
         }
 
-        /// <summary>
-        /// Crea las obras sociales iniciales de prueba
-        /// </summary>
+        // Crea las obras sociales iniciales de prueba
         private async Task CreateObrasSocialesAsync()
         {
             var obrasSocialesIniciales = new[]
@@ -192,10 +182,8 @@ namespace turnero_medico_backend.Services
             }
         }
 
-        /// <summary>
-        /// Crea las especialidades cubiertas por cada obra social
-        /// Define qué requiere validación externa y qué no
-        /// </summary>
+        // Crea las especialidades cubiertas por cada obra social
+        //Define qué requiere validación externa y qué no
         private async Task CreateEspecialidadesPorObraAsync()
         {
             // Obtener todas las obras sociales
@@ -268,7 +256,7 @@ namespace turnero_medico_backend.Services
                     // Verificar si ya existe
                     var existente = await _obraSocialEspecialidadRepository.FindAsync(ose =>
                         ose.ObraSocialId == os.Id &&
-                        ose.Especialidad.ToLower() == especialidad.ToLower());
+                        string.Equals(ose.Especialidad, especialidad, StringComparison.OrdinalIgnoreCase));
 
                     if (!existente.Any())
                     {
@@ -288,9 +276,9 @@ namespace turnero_medico_backend.Services
         }
     }
 
-    /// <summary>
+    /// <>
     /// Extensión para facilitar el seeding en Program.cs
-    /// </summary>
+    /// </>
     public static class SeedDataServiceExtensions
     {
         public static async Task SeedDatabaseAsync(this WebApplication app)

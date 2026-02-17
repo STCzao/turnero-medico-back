@@ -2,10 +2,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace turnero_medico_backend.DTOs.Validations
 {
-    /// <summary>
-    /// Atributo personalizado para validar que la fecha de nacimiento
-    /// cumpla con una edad mínima requerida
-    /// </summary>
+    // Atributo personalizado para validar que la fecha de nacimiento cumpla con una edad mínima requerida
+
     [AttributeUsage(AttributeTargets.Property)]
     public class MinimumAgeAttribute : ValidationAttribute
     {
@@ -30,9 +28,8 @@ namespace turnero_medico_backend.DTOs.Validations
         }
     }
 
-    /// <summary>
-    /// Atributo personalizado para validar que una fecha no esté en el pasado
-    /// </summary>
+    // Atributo personalizado para validar que una fecha no esté en el pasado
+
     [AttributeUsage(AttributeTargets.Property)]
     public class FutureOrTodayAttribute : ValidationAttribute
     {
@@ -50,10 +47,8 @@ namespace turnero_medico_backend.DTOs.Validations
         }
     }
 
-    /// <summary>
-    /// Atributo personalizado para validar que una fecha no esté
-    /// más allá de una cantidad máxima de días en el futuro
-    /// </summary>
+    // Atributo personalizado para validar que una fecha no esta más allá de una cantidad máxima de días en el futuro
+
     [AttributeUsage(AttributeTargets.Property)]
     public class MaximumFutureDateAttribute : ValidationAttribute
     {

@@ -15,9 +15,8 @@ namespace turnero_medico_backend.Services
         private readonly IMapper _mapper = mapper;
         private readonly CurrentUserService _currentUserService = currentUserService;
 
-        /// <summary>
-        /// Obtiene todas las obras sociales (solo Admin)
-        /// </summary>
+        // Obtiene todas las obras sociales (solo Admin)
+    
         public async Task<IEnumerable<ObraSocialReadDto>> GetAllAsync()
         {
             if (!_currentUserService.IsAdmin())
@@ -27,9 +26,7 @@ namespace turnero_medico_backend.Services
             return obras.Select(o => _mapper.Map<ObraSocialReadDto>(o));
         }
 
-        /// <summary>
-        /// Obtiene una obra social por ID (solo Admin)
-        /// </summary>
+        // Obtiene una obra social por ID (solo Admin)
         public async Task<ObraSocialReadDto?> GetByIdAsync(int id)
         {
             if (!_currentUserService.IsAdmin())
@@ -39,9 +36,7 @@ namespace turnero_medico_backend.Services
             return obra != null ? _mapper.Map<ObraSocialReadDto>(obra) : null;
         }
 
-        /// <summary>
-        /// Crea una nueva obra social (solo Admin)
-        /// </summary>
+        // Crea una nueva obra social (solo Admin) 
         public async Task<ObraSocialReadDto> CreateAsync(ObraSocialCreateDto dto)
         {
             if (!_currentUserService.IsAdmin())
@@ -57,9 +52,7 @@ namespace turnero_medico_backend.Services
             return _mapper.Map<ObraSocialReadDto>(createdObra);
         }
 
-        /// <summary>
-        /// Elimina una obra social (solo Admin)
-        /// </summary>
+        // Elimina una obra social (solo Admin)
         public async Task<bool> DeleteAsync(int id)
         {
             if (!_currentUserService.IsAdmin())
@@ -75,9 +68,7 @@ namespace turnero_medico_backend.Services
             return await _obraSocialRepository.DeleteAsync(id);
         }
 
-        /// <summary>
-        /// Verifica si una obra social existe
-        /// </summary>
+        // Verifica si una obra social existe
         public async Task<bool> ExistAsync(int id)
         {
             var obra = await _obraSocialRepository.GetByIdAsync(id);

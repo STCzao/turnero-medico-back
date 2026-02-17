@@ -2,9 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace turnero_medico_backend.DTOs.TurnoDTOs
 {
-    /// <summary>
     /// DTO para que el doctor valide la cobertura de un turno en caso especial
-    /// </summary>
     public class TurnoValidarCoberturaDto
     {
         [Required(ErrorMessage = "El resultado de validación es obligatorio")]

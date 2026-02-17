@@ -3,10 +3,7 @@ using System.Text.Json;
 
 namespace turnero_medico_backend.Middleware
 {
-    /// <summary>
-    /// Middleware global que captura TODAS las excepciones no manejadas
-    /// y devuelve una respuesta JSON estandarizada
-    /// </summary>
+    // Middleware global que captura TODAS las excepciones no manejadas y devuelve una respuesta JSON estandarizada
     public class GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExceptionMiddleware> logger)
     {
         private readonly RequestDelegate _next = next;

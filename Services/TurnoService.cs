@@ -166,20 +166,20 @@ namespace turnero_medico_backend.Services
             if (!doctorExiste.Especialidad.Equals(dto.Especialidad, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException($"El doctor no es especialista en {dto.Especialidad}");
 
-            // ===== Validación de familia: Paciente crea turnos solo para sí mismo o para sus dependientes =====
+            //  Validación de familia: Paciente crea turnos solo para sí mismo o para sus dependientes 
             if (userRole == "Paciente")
             {
-                // Caso 1: Creando turno para sí mismo
+                // Creando turno para sí mismo
                 if (pacienteExiste.Email == userEmail)
                 {
                     // Permitido
                 }
-                // Caso 2: Creando turno para un dependiente (mamá crea para esposo/hijo)
+                // Creando turno para un dependiente (mamá crea para esposo/hijo)
                 else if (pacienteExiste.ResponsableId == userId)
                 {
                     // Permitido - es responsable
                 }
-                // Caso 3: Sin permisos
+                // Sin permisos
                 else
                 {
                     throw new UnauthorizedAccessException(
@@ -200,7 +200,7 @@ namespace turnero_medico_backend.Services
 
             var turno = _mapper.Map<Turno>(dto);
             
-            // ===== Validación de especialidad contra ObraSocial =====
+            // Validación de especialidad contra ObraSocial 
             // Si el paciente tiene una obra social, verificar que cubre la especialidad
             if (pacienteExiste.ObraSocialId.HasValue)
             {
@@ -239,7 +239,7 @@ namespace turnero_medico_backend.Services
                 turno.Estado = "PendienteValidacionDoctor";
             }
             
-            // ===== Nuevos campos para familia y facturación =====
+            // Nuevos campos para familia y facturación 
             if (string.IsNullOrEmpty(userId))
                 throw new UnauthorizedAccessException("No se pudo identificar el usuario actual.");
             
@@ -306,14 +306,13 @@ namespace turnero_medico_backend.Services
             // Paciente puede editar su turno pero NO el Estado
             if (userRole == "Paciente")
             {
-                var paciente = await _pacienteRepository.GetByIdAsync(turno.PacienteId);
-                if (paciente == null)
-                    throw new InvalidOperationException("El paciente del turno no existe");
+                var paciente = await _pacienteRepository.GetByIdAsync(turno.PacienteId)
+                    ?? throw new InvalidOperationException("El paciente del turno no existe");
 
-                // Caso 1: Es su propio turno
+                // Es su propio turno
                 bool essuPropio = paciente.Email == userEmail;
                 
-                // Caso 2: Es responsable del paciente (mamá editando turno del esposo/hijo)
+                // Es responsable del paciente 
                 bool esResponsable = paciente.ResponsableId == userId;
 
                 if (!essuPropio && !esResponsable)
@@ -393,19 +392,18 @@ namespace turnero_medico_backend.Services
             // Paciente puede eliminar solo sus propios turnos o los de sus dependientes
             if (userRole == "Paciente")
             {
-                var paciente = await _pacienteRepository.GetByIdAsync(turno.PacienteId);
-                if (paciente == null)
-                    throw new InvalidOperationException("El paciente del turno no existe");
+                var paciente = await _pacienteRepository.GetByIdAsync(turno.PacienteId)
+                    ?? throw new InvalidOperationException("El paciente del turno no existe");
 
-                // Caso 1: Es su propio turno
+                // Es su propio turno
                 if (paciente.Email == userEmail)
                     return await _turnoRepository.DeleteAsync(id);
 
-                // Caso 2: Es responsable del paciente (mamá eliminando turno del esposo/hijo)
+                // Es responsable del paciente 
                 if (paciente.ResponsableId == userId)
                     return await _turnoRepository.DeleteAsync(id);
 
-                // Caso 3: Sin permisos
+                // Sin permisos
                 throw new UnauthorizedAccessException(
                     "No tienes permisos para eliminar este turno. " +
                     "Solo puedes eliminar tus propios turnos o los de tus dependientes.");
@@ -420,9 +418,7 @@ namespace turnero_medico_backend.Services
             return turno != null;
         }
 
-        /// <summary>
-        /// Doctor valida cobertura en sistema externo y actualiza estado del turno
-        /// </summary>
+        // Doctor valida cobertura en sistema externo y actualiza estado del turno
         public async Task<TurnoReadDto?> ValidarCoberturaAsync(int turnoId, TurnoValidarCoberturaDto dto)
         {
             var turno = await _turnoRepository.GetByIdAsync(turnoId);
@@ -450,12 +446,12 @@ namespace turnero_medico_backend.Services
             }
 
             // Procesar la validación
-            if (dto.Resultado.ToLower() == "aceptado")
+            if (string.Equals(dto.Resultado, "aceptado", StringComparison.OrdinalIgnoreCase))
             {
                 turno.Estado = "Aceptado";
                 turno.MotivoRechazo = null;  // Limpiar motivo si estaba previo
             }
-            else if (dto.Resultado.ToLower() == "rechazado")
+            else if (string.Equals(dto.Resultado, "rechazado", StringComparison.OrdinalIgnoreCase))
             {
                 if (string.IsNullOrWhiteSpace(dto.MotivoRechazo))
                     throw new InvalidOperationException("Debe proporcionar un motivo de rechazo.");

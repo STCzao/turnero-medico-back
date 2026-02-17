@@ -4,18 +4,18 @@ using turnero_medico_backend.Models.Entities;
 
 namespace turnero_medico_backend.Data
 {
-    /// <summary>
+    /// <>
     /// Contexto de base de datos que incluye:
-    /// - Tablas de dominio: Pacientes, Doctores, Turnos
-    /// - Tablas de Identity: AspNetUsers, AspNetRoles, AspNetUserRoles, etc.
-    /// </summary>
+    /// Tablas de dominio: Pacientes, Doctores, Turnos
+    /// Tablas de Identity: AspNetUsers, AspNetRoles, AspNetUserRoles, etc.
+    /// </>
     public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : IdentityDbContext<ApplicationUser, ApplicationRole, string>(options)
     {
         public DbSet<Paciente> Pacientes { get; set; }
         public DbSet<Doctor> Doctores { get; set; }
         public DbSet<Turno> Turnos { get; set; }
         public DbSet<ObraSocial> ObrasSociales { get; set; }
-        public DbSet<ObraSocialEspecialidad> ObrasSocialesEspecialidades { get; set; }  // ← NUEVA
+        public DbSet<ObraSocialEspecialidad> ObrasSocialesEspecialidades { get; set; }  
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -51,7 +51,7 @@ namespace turnero_medico_backend.Data
             .HasForeignKey(t => t.DoctorId)
             .OnDelete(DeleteBehavior.Restrict);
 
-            // ===== NUEVA: Relación ObraSocial-Especialidades (1-a-Muchos) =====
+            // Relación: ObraSocial-Especialidades (1-a-Muchos)
             modelBuilder.Entity<ObraSocialEspecialidad>()
                 .HasOne(ose => ose.ObraSocial)
                 .WithMany(os => os.Especialidades)
@@ -63,7 +63,7 @@ namespace turnero_medico_backend.Data
                 .HasIndex(ose => new { ose.ObraSocialId, ose.Especialidad })
                 .IsUnique();
 
-            // ===== Índices Únicos =====
+            // Índices Únicos
             modelBuilder.Entity<Paciente>()
             .HasIndex(p => p.Dni)
             .IsUnique();
