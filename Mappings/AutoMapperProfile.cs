@@ -12,11 +12,10 @@ namespace turnero_medico_backend.Mappings
     {
         public AutoMapperProfile()
         {
-            // ObraSocial mappings 
-            CreateMap<ObraSocial, ObraSocialReadDto>()
-                .ReverseMap();
-
+            // ObraSocial mappings
+            CreateMap<ObraSocial, ObraSocialReadDto>();
             CreateMap<ObraSocialCreateDto, ObraSocial>();
+            CreateMap<ObraSocialUpdateDto, ObraSocial>();
 
             // Paciente mappings
             CreateMap<Paciente, PacienteReadDto>()

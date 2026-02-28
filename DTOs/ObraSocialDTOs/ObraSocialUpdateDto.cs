@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace turnero_medico_backend.DTOs.ObraSocialDTOs
 {
-    public class ObraSocialCreateDto
+    public class ObraSocialUpdateDto
     {
         [Required(ErrorMessage = "El nombre es obligatorio")]
         [StringLength(100, MinimumLength = 2, ErrorMessage = "El nombre debe tener entre {2} y {1} caracteres")]

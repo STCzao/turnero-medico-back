@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using turnero_medico_backend.DTOs.AuthDTOs;
 using turnero_medico_backend.Services;
 
 namespace turnero_medico_backend.Controllers
@@ -10,13 +11,9 @@ namespace turnero_medico_backend.Controllers
     {
         private readonly IAuthService _authService = authService;
 
-        /// Registra un nuevo usuario
-        /// Email, contraseña, nombre, apellido, rol (Paciente/Doctor/Admin)
-        /// Resultado del registro
-
         [HttpPost("register")]
         [AllowAnonymous]
-        public async Task<IActionResult> Register([FromBody] RegisterRequest request)
+        public async Task<IActionResult> Register([FromBody] RegisterRequestDto request)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
@@ -35,12 +32,9 @@ namespace turnero_medico_backend.Controllers
             return Ok(new { message });
         }
 
-        /// Autentica un usuario y devuelve un token JWT
-        /// Email y contraseña
-        /// Token JWT si es exitoso
         [HttpPost("login")]
         [AllowAnonymous]
-        public async Task<IActionResult> Login([FromBody] LoginRequest request)
+        public async Task<IActionResult> Login([FromBody] LoginRequestDto request)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
@@ -52,8 +46,6 @@ namespace turnero_medico_backend.Controllers
 
             return Ok(new { token, message });
         }
-
-        /// Verifica que el usuario está autenticado (requiere token válido)
 
         [HttpGet("profile")]
         [Authorize]
@@ -73,24 +65,5 @@ namespace turnero_medico_backend.Controllers
                 message = "Usuario autenticado correctamente"
             });
         }
-    }
-
-    /// DTO para solicitud de registro
-
-    public class RegisterRequest
-    {
-        public string Email { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
-        public string Nombre { get; set; } = string.Empty;
-        public string Apellido { get; set; } = string.Empty;
-        public string Rol { get; set; } = "Paciente"; // Por defecto es Paciente
-    }
-
-    /// DTO para solicitud de login
-
-    public class LoginRequest
-    {
-        public string Email { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
     }
 }

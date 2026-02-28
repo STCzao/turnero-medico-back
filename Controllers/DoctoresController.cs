@@ -12,10 +12,24 @@ namespace turnero_medico_backend.Controllers
     {
 
         [HttpGet]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<IEnumerable<DoctorReadDto>>> GetAll()
         {
             var doctores = await _service.GetAllAsync();
             return Ok(doctores);
+        }
+
+        /// Obtiene el perfil del doctor autenticado actual
+        
+        [HttpGet("me")]
+        [Authorize(Roles = "Doctor")]
+        public async Task<ActionResult<DoctorReadDto>> GetMyProfile()
+        {
+            var doctor = await _service.GetMyProfileAsync();
+            if (doctor == null)
+                return NotFound(new { mensaje = "No se encontró un registro de doctor asociado a tu usuario. Contacta con el administrador." });
+
+            return Ok(doctor);
         }
 
 
@@ -42,6 +56,7 @@ namespace turnero_medico_backend.Controllers
 
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<DoctorReadDto>> Create(DoctorCreateDto dto)
         {
             if (!ModelState.IsValid)
@@ -53,6 +68,7 @@ namespace turnero_medico_backend.Controllers
 
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<DoctorReadDto>> Update(int id, DoctorUpdateDto dto)
         {
             if (!ModelState.IsValid)
@@ -70,6 +86,7 @@ namespace turnero_medico_backend.Controllers
         
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult> Delete(int id)
         {
             var result = await _service.DeleteAsync(id);

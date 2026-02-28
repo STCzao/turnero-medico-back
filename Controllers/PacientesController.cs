@@ -13,10 +13,24 @@ namespace turnero_medico_backend.Controllers
     {
         
         [HttpGet]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<IEnumerable<PacienteReadDto>>> GetAll()
         {
             var pacientes = await _service.GetAllAsync();
             return Ok(pacientes);
+        }
+
+        /// 
+        /// Obtiene el perfil del paciente autenticado actual
+        
+        [HttpGet("me")]
+        public async Task<ActionResult<PacienteReadDto>> GetMyProfile()
+        {
+            var paciente = await _service.GetMyProfileAsync();
+            if (paciente == null)
+                return NotFound(new { mensaje = "No se encontró un registro de paciente asociado a tu usuario. Contacta con el administrador." });
+
+            return Ok(paciente);
         }
 
 

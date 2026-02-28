@@ -10,14 +10,14 @@ namespace turnero_medico_backend.Services
         IRepository<Turno> turnoRepository,
         IRepository<Paciente> pacienteRepository,
         IRepository<Doctor> doctorRepository,
-        IRepository<ObraSocialEspecialidad> obraSocialEspecialidadRepository,
+        IRepository<ObraSocial> obraSocialRepository,
         IMapper mapper,
         CurrentUserService currentUserService) : ITurnoService
     {
         private readonly IRepository<Turno> _turnoRepository = turnoRepository;
         private readonly IRepository<Paciente> _pacienteRepository = pacienteRepository;
         private readonly IRepository<Doctor> _doctorRepository = doctorRepository;
-        private readonly IRepository<ObraSocialEspecialidad> _obraSocialEspecialidadRepository = obraSocialEspecialidadRepository;
+        private readonly IRepository<ObraSocial> _obraSocialRepository = obraSocialRepository;
         private readonly IMapper _mapper = mapper;
         private readonly CurrentUserService _currentUserService = currentUserService;
 
@@ -200,43 +200,31 @@ namespace turnero_medico_backend.Services
 
             var turno = _mapper.Map<Turno>(dto);
             
-            // Validación de especialidad contra ObraSocial 
-            // Si el paciente tiene una obra social, verificar que cubre la especialidad
+            // ===== Validación de Obra Social =====
             if (pacienteExiste.ObraSocialId.HasValue)
             {
-                var especialidadCubierta = await _obraSocialEspecialidadRepository.FindAsync(ose =>
-                    ose.ObraSocialId == pacienteExiste.ObraSocialId &&
-                    ose.Especialidad.ToLower() == dto.Especialidad.ToLower());
-
-                if (!especialidadCubierta.Any())
-                {
+                var obraSocial = await _obraSocialRepository.GetByIdAsync(pacienteExiste.ObraSocialId.Value);
+                if (obraSocial == null)
                     throw new InvalidOperationException(
-                        $"La obra social del paciente no cubre la especialidad '{dto.Especialidad}'. " +
-                        $"Contacta con la obra social para verificar cobertura.");
-                }
+                        $"La obra social del paciente (ID: {pacienteExiste.ObraSocialId}) no existe. Actualiza la información del paciente.");
 
-                // Si la especialidad requiere validación externa por doctor
-                var oseEspecialidad = especialidadCubierta.First();
-                if (oseEspecialidad.RequiereValidacionExterna)
-                {
-                    // Estado: Pendiente validación del doctor
-                    turno.Estado = "PendienteValidacionDoctor";
-                }
-                else
-                {
-                    // Estado: Pre-aprobado (caso estándar)
-                    turno.Estado = "Aceptado";
-                }
+                bool cubre = obraSocial.Especialidades
+                    .Any(e => e.Equals(dto.Especialidad, StringComparison.OrdinalIgnoreCase));
+
+                if (!cubre)
+                    throw new InvalidOperationException(
+                        $"La obra social '{obraSocial.Nombre}' no cubre la especialidad '{dto.Especialidad}'. " +
+                        $"Verificá con tu obra social o cambiá a pago particular.");
+
+                turno.Estado = "Aceptado";
             }
-            else if (pacienteExiste.TipoPago == TipoPago.Particular)  // Pago particular (sin OS)
+            else if (pacienteExiste.TipoPago == TipoPago.Particular)
             {
-                // Turno particular: se acepta directamente
                 turno.Estado = "Aceptado";
             }
             else
             {
-                // Sin cobertura conocida: requiere validación
-                turno.Estado = "PendienteValidacionDoctor";
+                turno.Estado = "Pendiente";
             }
             
             // Nuevos campos para familia y facturación 

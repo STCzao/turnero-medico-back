@@ -15,7 +15,6 @@ namespace turnero_medico_backend.Data
         public DbSet<Doctor> Doctores { get; set; }
         public DbSet<Turno> Turnos { get; set; }
         public DbSet<ObraSocial> ObrasSociales { get; set; }
-        public DbSet<ObraSocialEspecialidad> ObrasSocialesEspecialidades { get; set; }  
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -51,19 +50,12 @@ namespace turnero_medico_backend.Data
             .HasForeignKey(t => t.DoctorId)
             .OnDelete(DeleteBehavior.Restrict);
 
-            // Relación: ObraSocial-Especialidades (1-a-Muchos)
-            modelBuilder.Entity<ObraSocialEspecialidad>()
-                .HasOne(ose => ose.ObraSocial)
-                .WithMany(os => os.Especialidades)
-                .HasForeignKey(ose => ose.ObraSocialId)
-                .OnDelete(DeleteBehavior.Cascade);  // Si se elimina OS, también especialidades
+            // ObraSocial: especialidades como columna JSONB
+            modelBuilder.Entity<ObraSocial>()
+                .Property(o => o.Especialidades)
+                .HasColumnType("jsonb");
 
-            // Índice único: una OS no puede tener dos veces la misma especialidad
-            modelBuilder.Entity<ObraSocialEspecialidad>()
-                .HasIndex(ose => new { ose.ObraSocialId, ose.Especialidad })
-                .IsUnique();
-
-            // Índices Únicos
+            // Índices únicos
             modelBuilder.Entity<Paciente>()
             .HasIndex(p => p.Dni)
             .IsUnique();
