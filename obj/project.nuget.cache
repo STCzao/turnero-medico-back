@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "SIQLkRD4qqA=",
+  "dgSpecHash": "dQAMn4BUyGs=",
   "success": true,
-  "projectFilePath": "D:\\Facultad\\UNSTA\\Backend\\Practica\\Trabajos-Practicos\\TP-Final\\turnero-medico-backend\\turnero-medico-backend.csproj",
+  "projectFilePath": "D:\\Programacion\\Personal\\Practica\\FullStack\\Turnero-medico\\turnero-medico-backend\\turnero-medico-backend.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\santi\\.nuget\\packages\\automapper\\12.0.1\\automapper.12.0.1.nupkg.sha512",
     "C:\\Users\\santi\\.nuget\\packages\\automapper.extensions.microsoft.dependencyinjection\\12.0.1\\automapper.extensions.microsoft.dependencyinjection.12.0.1.nupkg.sha512",

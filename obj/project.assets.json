@@ -2954,11 +2954,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\Facultad\\UNSTA\\Backend\\Practica\\Trabajos-Practicos\\TP-Final\\turnero-medico-backend\\turnero-medico-backend.csproj",
+      "projectUniqueName": "D:\\Programacion\\Personal\\Practica\\FullStack\\Turnero-medico\\turnero-medico-backend\\turnero-medico-backend.csproj",
       "projectName": "turnero-medico-backend",
-      "projectPath": "D:\\Facultad\\UNSTA\\Backend\\Practica\\Trabajos-Practicos\\TP-Final\\turnero-medico-backend\\turnero-medico-backend.csproj",
+      "projectPath": "D:\\Programacion\\Personal\\Practica\\FullStack\\Turnero-medico\\turnero-medico-backend\\turnero-medico-backend.csproj",
       "packagesPath": "C:\\Users\\santi\\.nuget\\packages\\",
-      "outputPath": "D:\\Facultad\\UNSTA\\Backend\\Practica\\Trabajos-Practicos\\TP-Final\\turnero-medico-backend\\obj\\",
+      "outputPath": "D:\\Programacion\\Personal\\Practica\\FullStack\\Turnero-medico\\turnero-medico-backend\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\santi\\AppData\\Roaming\\NuGet\\NuGet.Config"
