@@ -3511,11 +3511,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\Facultad\\UNSTA\\Backend\\Practica\\Trabajos-Practicos\\TP-Final\\turnero-medico-backend\\turnero-medico-backend.csproj",
+      "projectUniqueName": "D:\\Programacion\\Personal\\Practica\\FullStack\\Turnero-medico\\turnero-medico-backend\\turnero-medico-backend.csproj",
       "projectName": "turnero-medico-backend",
-      "projectPath": "D:\\Facultad\\UNSTA\\Backend\\Practica\\Trabajos-Practicos\\TP-Final\\turnero-medico-backend\\turnero-medico-backend.csproj",
+      "projectPath": "D:\\Programacion\\Personal\\Practica\\FullStack\\Turnero-medico\\turnero-medico-backend\\turnero-medico-backend.csproj",
       "packagesPath": "C:\\Users\\santi\\.nuget\\packages\\",
-      "outputPath": "D:\\Facultad\\UNSTA\\Backend\\Practica\\Trabajos-Practicos\\TP-Final\\turnero-medico-backend\\obj\\",
+      "outputPath": "D:\\Programacion\\Personal\\Practica\\FullStack\\Turnero-medico\\turnero-medico-backend\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\santi\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -3614,7 +3614,7 @@
       "code": "NU1902",
       "level": "Warning",
       "warningLevel": 1,
-      "message": "El paquete \"System.IdentityModel.Tokens.Jwt\" 7.0.3 tiene una vulnerabilidad de gravedad moderada conocida, https://github.com/advisories/GHSA-59j7-ghrg-fj52",
+      "message": "Package 'System.IdentityModel.Tokens.Jwt' 7.0.3 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-59j7-ghrg-fj52",
       "libraryId": "System.IdentityModel.Tokens.Jwt",
       "targetGraphs": [
         "net8.0"

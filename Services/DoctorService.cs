@@ -35,6 +35,24 @@ namespace turnero_medico_backend.Services
             return doctor == null ? null : _mapper.Map<DoctorReadDto>(doctor);
         }
 
+        /// 
+        /// Obtiene el perfil del doctor autenticado actual
+        /// </summary>
+        public async Task<DoctorReadDto?> GetMyProfileAsync()
+        {
+            var userEmail = _currentUserService.GetUserEmail();
+            if (string.IsNullOrEmpty(userEmail))
+                throw new UnauthorizedAccessException("No se pudo obtener el email del usuario autenticado");
+
+            var doctores = await _repository.FindAsync(d => d.Email == userEmail);
+            var doctor = doctores.FirstOrDefault();
+
+            if (doctor == null)
+                return null;
+
+            return _mapper.Map<DoctorReadDto>(doctor);
+        }
+
         public async Task<DoctorReadDto> CreateAsync(DoctorCreateDto dto)
         {
             var doctor = _mapper.Map<Doctor>(dto);

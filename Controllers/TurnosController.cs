@@ -12,6 +12,7 @@ namespace turnero_medico_backend.Controllers
     {
 
         [HttpGet]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<IEnumerable<TurnoReadDto>>> GetAll()
         {
             var turnos = await _service.GetAllAsync();
