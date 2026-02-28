@@ -10,13 +10,35 @@ namespace turnero_medico_backend.Models.Entities
         
         public string Apellido { get; set; } = string.Empty;
         
-        public string Email { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;  // ← nullable para dependientes sin AspNetUser
         
         public string Telefono { get; set; } = string.Empty;
         
         public DateTime FechaNacimiento { get; set; }
         
-        // Relación: Un paciente puede tener muchos turnos
-        public ICollection<Turno> Turnos { get; set; } = new List<Turno>();
+        // ===== NUEVO: Relación Familiar =====
+        public string? ResponsableId { get; set; }  // FK → AspNetUser (nullable)
+        
+        public bool EsMayorDeEdad { get; set; }  // Para control de lógica
+        
+        // ===== NUEVO: Cobertura Médica =====
+        public TipoPago TipoPago { get; set; } = TipoPago.ObraSocial;
+        
+        public int? ObraSocialId { get; set; }  // FK → ObraSocial (nullable)
+        
+        public string NumeroAfiliado { get; set; } = string.Empty;
+        
+        // ===== Relaciones =====
+        public virtual ICollection<Turno> Turnos { get; set; } = new List<Turno>();
+        
+        public virtual ObraSocial? ObraSocial { get; set; }
+    }
+    
+    // ===== ENUM: Tipos de Pago =====
+    public enum TipoPago
+    {
+        ObraSocial,
+        Particular,
+        SinCobertura
     }
 }

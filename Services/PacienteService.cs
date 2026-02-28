@@ -1,3 +1,4 @@
+using AutoMapper;
 using turnero_medico_backend.DTOs.PacienteDTOs;
 using turnero_medico_backend.Models.Entities;
 using turnero_medico_backend.Repositories.Interfaces;
@@ -5,25 +6,58 @@ using turnero_medico_backend.Services.Interfaces;
 
 namespace turnero_medico_backend.Services
 {
-    public class PacienteService(IRepository<Paciente> _repository) : IPacienteService
+    public class PacienteService(
+        IRepository<Paciente> _repository,
+        IMapper _mapper,
+        CurrentUserService _currentUserService
+    ) : IPacienteService
     {
         public async Task<IEnumerable<PacienteReadDto>> GetAllAsync()
         {
             var pacientes = await _repository.GetAllAsync();
-            return pacientes.Select(p => Mapper.MapToPacienteReadDto(p));
+            
+            // Admin ve todos, Paciente ve solo sus datos
+            if (!_currentUserService.IsAdmin())
+            {
+                // Solo admins ven la lista completa
+                throw new UnauthorizedAccessException("No tienes permisos para ver la lista de pacientes");
+            }
+            
+            return _mapper.Map<IEnumerable<PacienteReadDto>>(pacientes);
         }
 
         public async Task<PacienteReadDto?> GetByIdAsync(int id)
         {
             var paciente = await _repository.GetByIdAsync(id);
-            return paciente == null ? null : Mapper.MapToPacienteReadDto(paciente);
+            if (paciente == null)
+                return null;
+
+            return _mapper.Map<PacienteReadDto>(paciente);
+        }
+
+        /// 
+        /// Obtiene el perfil del paciente autenticado actual
+        /// </summary>
+        public async Task<PacienteReadDto?> GetMyProfileAsync()
+        {
+            var userEmail = _currentUserService.GetUserEmail();
+            if (string.IsNullOrEmpty(userEmail))
+                throw new UnauthorizedAccessException("No se pudo obtener el email del usuario autenticado");
+
+            var pacientes = await _repository.FindAsync(p => p.Email == userEmail);
+            var paciente = pacientes.FirstOrDefault();
+
+            if (paciente == null)
+                return null;
+
+            return _mapper.Map<PacienteReadDto>(paciente);
         }
 
         public async Task<PacienteReadDto> CreateAsync(PacienteCreateDto dto)
         {
-            var paciente = Mapper.MapToPaciente(dto);
+            var paciente = _mapper.Map<Paciente>(dto);
             var createdPaciente = await _repository.AddAsync(paciente);
-            return Mapper.MapToPacienteReadDto(createdPaciente);
+            return _mapper.Map<PacienteReadDto>(createdPaciente);
         }
 
         public async Task<PacienteReadDto?> UpdateAsync(int id, PacienteUpdateDto dto)
@@ -32,9 +66,9 @@ namespace turnero_medico_backend.Services
             if (paciente == null)
                 return null;
 
-            var updatedPaciente = Mapper.MapToPaciente(dto, paciente);
-            await _repository.UpdateAsync(updatedPaciente);
-            return Mapper.MapToPacienteReadDto(updatedPaciente);
+            _mapper.Map(dto, paciente);
+            await _repository.UpdateAsync(paciente);
+            return _mapper.Map<PacienteReadDto>(paciente);
         }
 
         public async Task<bool> DeleteAsync(int id)

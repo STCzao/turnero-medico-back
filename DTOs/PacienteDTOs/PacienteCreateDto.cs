@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using turnero_medico_backend.DTOs.Validations;
 
 namespace turnero_medico_backend.DTOs.PacienteDTOs
 {
@@ -29,6 +30,17 @@ namespace turnero_medico_backend.DTOs.PacienteDTOs
 
         [Required(ErrorMessage = "La fecha de nacimiento es obligatoria")]
         [DataType(DataType.Date)]
+        [MinimumAge(18, ErrorMessage = "El paciente debe ser mayor de 18 años")]
         public DateTime FechaNacimiento { get; set; }
+
+        // ===== Nuevos campos para Familia & ObraSocial =====
+        [Range(0, 2, ErrorMessage = "TipoPago debe ser 0(ObraSocial), 1(Particular) o 2(SinCobertura)")]
+        public int TipoPago { get; set; } = 0;  // 0=ObraSocial (default), 1=Particular, 2=SinCobertura
+
+        [Range(1, int.MaxValue, ErrorMessage = "El ID de la Obra Social debe ser válido")]
+        public int? ObraSocialId { get; set; }  // Opcional, solo si TipoPago=0
+
+        [StringLength(30, ErrorMessage = "El número de afiliado no puede exceder 30 caracteres")]
+        public string NumeroAfiliado { get; set; } = string.Empty;  // Número de afiliado de la OS
     }
 }

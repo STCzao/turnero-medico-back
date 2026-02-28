@@ -7,7 +7,7 @@ namespace turnero_medico_backend.Services
 {
     public class Mapper
     {
-        // PACIENTE MAPPINGS
+        // Paciente mappings
         public static Paciente MapToPaciente(PacienteCreateDto dto)
         {
             return new Paciente
@@ -46,7 +46,7 @@ namespace turnero_medico_backend.Services
             };
         }
 
-        // DOCTOR MAPPINGS
+        // Doctor mappings
         public static Doctor MapToDoctor(DoctorCreateDto dto)
         {
             return new Doctor
@@ -85,7 +85,7 @@ namespace turnero_medico_backend.Services
             };
         }
 
-        // TURNO MAPPINGS
+        // Turno mappings
         public static Turno MapToTurno(TurnoCreateDto dto)
         {
             return new Turno

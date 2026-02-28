@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using turnero_medico_backend.DTOs.Validations;
 
 namespace turnero_medico_backend.DTOs.TurnoDTOs
 {
@@ -19,10 +20,16 @@ namespace turnero_medico_backend.DTOs.TurnoDTOs
 
         [Required(ErrorMessage = "La fecha y hora del turno es obligatoria")]
         [DataType(DataType.DateTime)]
+        [FutureOrToday(ErrorMessage = "El turno no puede ser en el pasado")]
+        [MaximumFutureDate(365, ErrorMessage = "El turno no puede estar más de 1 año en el futuro")]
         public DateTime FechaHora { get; set; }
 
         [Required(ErrorMessage = "El motivo de la consulta es obligatorio")]
         [StringLength(500, MinimumLength = 5, ErrorMessage = "El motivo debe tener entre {2} y {1} caracteres")]
         public string Motivo { get; set; } = string.Empty;
+
+        // ===== Nuevos campos para facturación =====
+        [StringLength(200, ErrorMessage = "Las notas de facturación no pueden exceder 200 caracteres")]
+        public string NotasFacturacion { get; set; } = string.Empty;  // Ej: "OSDE 80%, SOS Médico"
     }
 }
