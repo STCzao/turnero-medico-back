@@ -5,17 +5,10 @@ using System.Security.Claims;
 using System.Text;
 using turnero_medico_backend.Models.Entities;
 using turnero_medico_backend.Repositories.Interfaces;
+using turnero_medico_backend.Services.Interfaces;
 
 namespace turnero_medico_backend.Services
 {
-    public interface IAuthService
-    {
-        Task<(bool Success, string Message)> RegisterAsync(string email, string password, string nombre, string apellido, string rol);
-        Task<(bool Success, string Message)> RegisterPacienteAsync(string email, string password, string nombre, string apellido, string dni, string telefono, DateTime fechaNacimiento);
-        Task<(bool Success, string Message)> RegisterDoctorAsync(string email, string password, string nombre, string apellido, string matricula, string especialidad, string telefono);
-        Task<(bool Success, string Token, string Message)> LoginAsync(string email, string password);
-    }
-
     public class AuthService(
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager,
@@ -99,10 +92,8 @@ namespace turnero_medico_backend.Services
             }
         }
 
-        /// 
-        /// Registra un nuevo paciente - Crea el usuario Y el registro en tabla Pacientes
-        /// Auto-registro público
-        /// </summary>
+        // Registra un nuevo paciente - Crea el usuario Y el registro en tabla Pacientes
+        // Auto-registro público
         public async Task<(bool Success, string Message)> RegisterPacienteAsync(
             string email,
             string password,
@@ -167,10 +158,15 @@ namespace turnero_medico_backend.Services
                     FechaNacimiento = fechaNacimiento,
                     EsMayorDeEdad = esMayorDeEdad,
                     TipoPago = TipoPago.SinCobertura,  // Por defecto sin cobertura
-                    NumeroAfiliado = string.Empty
+                    NumeroAfiliado = string.Empty,
+                    UserId = newUser.Id  // ← vincular entidad con cuenta de usuario
                 };
 
-                await _pacienteRepository.AddAsync(paciente);
+                var createdPaciente = await _pacienteRepository.AddAsync(paciente);
+
+                // 4. Actualizar PacienteId en el usuario para navegación inversa
+                newUser.PacienteId = createdPaciente.Id;
+                await _userManager.UpdateAsync(newUser);
 
                 return (true, "Paciente registrado exitosamente. Ya puedes agendar turnos.");
             }
@@ -241,10 +237,15 @@ namespace turnero_medico_backend.Services
                     Apellido = apellido,
                     Especialidad = especialidad,
                     Email = email,
-                    Telefono = telefono
+                    Telefono = telefono,
+                    UserId = newUser.Id  // ← vincular entidad con cuenta de usuario
                 };
 
-                await _doctorRepository.AddAsync(doctor);
+                var createdDoctor = await _doctorRepository.AddAsync(doctor);
+
+                // 4. Actualizar DoctorId en el usuario para navegación inversa
+                newUser.DoctorId = createdDoctor.Id;
+                await _userManager.UpdateAsync(newUser);
 
                 return (true, "Doctor registrado exitosamente");
             }
@@ -297,8 +298,7 @@ namespace turnero_medico_backend.Services
                 new Claim(ClaimTypes.NameIdentifier, user.Id),
                 new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
                 new Claim(ClaimTypes.Name, $"{user.Nombre} {user.Apellido}"),
-                new Claim(ClaimTypes.Role, user.Rol),  // ← Cambiar a ClaimTypes.Role para que [Authorize(Roles="")] funcione
-                new Claim("Rol", user.Rol)  // ← Mantener también para compatibilidad con CurrentUserService
+                new Claim(ClaimTypes.Role, user.Rol)  // ← Única fuente de verdad; usado por [Authorize(Roles="")] y CurrentUserService
             };
 
             // Crear la clave de firma

@@ -1,4 +1,5 @@
 using AutoMapper;
+using turnero_medico_backend.DTOs.Common;
 using turnero_medico_backend.DTOs.TurnoDTOs;
 using turnero_medico_backend.Models.Entities;
 using turnero_medico_backend.Repositories.Interfaces;
@@ -30,6 +31,21 @@ namespace turnero_medico_backend.Services
             return turnos.Select(t => _mapper.Map<TurnoReadDto>(t));
         }
 
+        public async Task<PagedResultDto<TurnoReadDto>> GetAllPagedAsync(int page, int pageSize)
+        {
+            if (!_currentUserService.IsAdmin())
+                throw new UnauthorizedAccessException("No tienes permisos para ver el listado de turnos.");
+
+            var (items, total) = await _turnoRepository.GetAllPagedAsync(page, pageSize);
+            return new PagedResultDto<TurnoReadDto>
+            {
+                Items = items.Select(t => _mapper.Map<TurnoReadDto>(t)),
+                Total = total,
+                Page = page,
+                PageSize = pageSize
+            };
+        }
+
         public async Task<IEnumerable<TurnoReadDto>> GetByPacienteAsync(int pacienteId)
         {
             var userRole = _currentUserService.GetUserRole();
@@ -43,7 +59,7 @@ namespace turnero_medico_backend.Services
                 return turnos.Select(t => _mapper.Map<TurnoReadDto>(t));
             }
 
-            // Paciente solo ve sus propios turnos o turnos de sus dependientes
+            // Paciente solo ve sus propios turnos o los de sus dependientes
             if (userRole == "Paciente")
             {
                 var paciente = await _pacienteRepository.GetByIdAsync(pacienteId);
@@ -51,7 +67,7 @@ namespace turnero_medico_backend.Services
                     throw new InvalidOperationException($"El paciente con ID {pacienteId} no existe");
 
                 // Caso 1: Es su propio paciente
-                if (paciente.Email == userEmail)
+                if (paciente.UserId == userId)
                 {
                     var turnos = await _turnoRepository.FindAsync(t => t.PacienteId == pacienteId);
                     return turnos.Select(t => _mapper.Map<TurnoReadDto>(t));
@@ -77,7 +93,7 @@ namespace turnero_medico_backend.Services
         public async Task<IEnumerable<TurnoReadDto>> GetByDoctorAsync(int doctorId)
         {
             var userRole = _currentUserService.GetUserRole();
-            var userEmail = _currentUserService.GetUserEmail();
+            var userId = _currentUserService.GetUserId();
 
             // Admin ve todos los turnos de cualquier doctor
             if (_currentUserService.IsAdmin())
@@ -90,7 +106,7 @@ namespace turnero_medico_backend.Services
             if (userRole == "Doctor")
             {
                 var doctor = await _doctorRepository.GetByIdAsync(doctorId);
-                if (doctor == null || doctor.Email != userEmail)
+                if (doctor == null || doctor.UserId != userId)
                     throw new UnauthorizedAccessException("No tienes permisos para ver los turnos de este doctor.");
 
                 var turnos = await _turnoRepository.FindAsync(t => t.DoctorId == doctorId);
@@ -122,7 +138,7 @@ namespace turnero_medico_backend.Services
                     ?? throw new InvalidOperationException("El paciente del turno no existe");
 
                 // Caso 1: Es su propio paciente
-                if (paciente.Email == userEmail)
+                if (paciente.UserId == userId)
                     return _mapper.Map<TurnoReadDto>(turno);
 
                 // Caso 2: Es responsable del paciente (mamá viendo turno del esposo/hijo)
@@ -138,7 +154,7 @@ namespace turnero_medico_backend.Services
             else if (userRole == "Doctor")
             {
                 var doctor = await _doctorRepository.GetByIdAsync(turno.DoctorId);
-                if (doctor?.Email != userEmail)
+                if (doctor?.UserId != userId)
                     throw new UnauthorizedAccessException("No tienes permisos para ver este turno.");
             }
 
@@ -170,7 +186,7 @@ namespace turnero_medico_backend.Services
             if (userRole == "Paciente")
             {
                 // Creando turno para sí mismo
-                if (pacienteExiste.Email == userEmail)
+                if (pacienteExiste.UserId == userId)
                 {
                     // Permitido
                 }
@@ -216,15 +232,15 @@ namespace turnero_medico_backend.Services
                         $"La obra social '{obraSocial.Nombre}' no cubre la especialidad '{dto.Especialidad}'. " +
                         $"Verificá con tu obra social o cambiá a pago particular.");
 
-                turno.Estado = "Aceptado";
+                turno.Estado = EstadoTurno.Aceptado;
             }
             else if (pacienteExiste.TipoPago == TipoPago.Particular)
             {
-                turno.Estado = "Aceptado";
+                turno.Estado = EstadoTurno.Aceptado;
             }
             else
             {
-                turno.Estado = "Pendiente";
+                turno.Estado = EstadoTurno.Pendiente;
             }
             
             // Nuevos campos para familia y facturación 
@@ -268,7 +284,7 @@ namespace turnero_medico_backend.Services
             if (userRole == "Doctor")
             {
                 var doctor = await _doctorRepository.GetByIdAsync(turno.DoctorId);
-                if (doctor?.Email != userEmail)
+                if (doctor?.UserId != userId)
                     throw new UnauthorizedAccessException("No tienes permisos para modificar este turno.");
 
                 // Doctor solo puede cambiar Estado
@@ -298,7 +314,7 @@ namespace turnero_medico_backend.Services
                     ?? throw new InvalidOperationException("El paciente del turno no existe");
 
                 // Es su propio turno
-                bool essuPropio = paciente.Email == userEmail;
+                bool essuPropio = paciente.UserId == userId;
                 
                 // Es responsable del paciente 
                 bool esResponsable = paciente.ResponsableId == userId;
@@ -319,7 +335,7 @@ namespace turnero_medico_backend.Services
                 // Si intenta cambiar Doctor, validar que turno sea Pendiente y que haya disponibilidad
                 if (dto.DoctorId.HasValue && dto.DoctorId != turno.DoctorId)
                 {
-                    if (turno.Estado != "Pendiente")
+                    if (turno.Estado != EstadoTurno.Pendiente)
                         throw new InvalidOperationException("Solo puedes cambiar de doctor si el turno está pendiente.");
 
                     var newDoctor = await _doctorRepository.GetByIdAsync(dto.DoctorId.Value)
@@ -371,7 +387,7 @@ namespace turnero_medico_backend.Services
             if (userRole == "Doctor")
             {
                 var doctor = await _doctorRepository.GetByIdAsync(turno.DoctorId);
-                if (doctor?.Email != userEmail)
+                if (doctor?.UserId != userId)
                     throw new UnauthorizedAccessException("No tienes permisos para eliminar este turno.");
 
                 return await _turnoRepository.DeleteAsync(id);
@@ -384,7 +400,7 @@ namespace turnero_medico_backend.Services
                     ?? throw new InvalidOperationException("El paciente del turno no existe");
 
                 // Es su propio turno
-                if (paciente.Email == userEmail)
+                if (paciente.UserId == userId)
                     return await _turnoRepository.DeleteAsync(id);
 
                 // Es responsable del paciente 
@@ -422,34 +438,34 @@ namespace turnero_medico_backend.Services
             var userId = _currentUserService.GetUserId();
             var doctor = await _doctorRepository.GetByIdAsync(turno.DoctorId);
 
-            if (doctor?.Email != userEmail)
+            if (doctor?.UserId != userId)
                 throw new UnauthorizedAccessException("Solo puedes validar coberturas de tus propios turnos.");
 
             // Validar que el turno esté pendiente de validación
-            if (turno.Estado != "PendienteValidacionDoctor")
+            if (turno.Estado != EstadoTurno.PendienteValidacionDoctor)
             {
                 throw new InvalidOperationException(
                     $"Este turno no requiere validación (Estado actual: {turno.Estado}). " +
-                    $"Solo turnos en estado 'PendienteValidacionDoctor' pueden ser validados.");
+                    $"Solo turnos en estado '{EstadoTurno.PendienteValidacionDoctor}' pueden ser validados.");
             }
 
             // Procesar la validación
-            if (string.Equals(dto.Resultado, "aceptado", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(dto.Resultado, EstadoTurno.Aceptado, StringComparison.OrdinalIgnoreCase))
             {
-                turno.Estado = "Aceptado";
+                turno.Estado = EstadoTurno.Aceptado;
                 turno.MotivoRechazo = null;  // Limpiar motivo si estaba previo
             }
-            else if (string.Equals(dto.Resultado, "rechazado", StringComparison.OrdinalIgnoreCase))
+            else if (string.Equals(dto.Resultado, EstadoTurno.Rechazado, StringComparison.OrdinalIgnoreCase))
             {
                 if (string.IsNullOrWhiteSpace(dto.MotivoRechazo))
                     throw new InvalidOperationException("Debe proporcionar un motivo de rechazo.");
 
-                turno.Estado = "Rechazado";
+                turno.Estado = EstadoTurno.Rechazado;
                 turno.MotivoRechazo = dto.MotivoRechazo;
             }
             else
             {
-                throw new InvalidOperationException("Resultado debe ser 'Aceptado' o 'Rechazado'");
+                throw new InvalidOperationException($"Resultado debe ser '{EstadoTurno.Aceptado}' o '{EstadoTurno.Rechazado}'");
             }
 
             // Registrar validación

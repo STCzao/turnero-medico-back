@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using turnero_medico_backend.DTOs.Common;
 using turnero_medico_backend.DTOs.TurnoDTOs;
 using turnero_medico_backend.Services.Interfaces;
 
@@ -13,9 +14,11 @@ namespace turnero_medico_backend.Controllers
 
         [HttpGet]
         [Authorize(Roles = "Admin")]
-        public async Task<ActionResult<IEnumerable<TurnoReadDto>>> GetAll()
+        public async Task<ActionResult<PagedResultDto<TurnoReadDto>>> GetAll(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20)
         {
-            var turnos = await _service.GetAllAsync();
+            var turnos = await _service.GetAllPagedAsync(page, pageSize);
             return Ok(turnos);
         }
 

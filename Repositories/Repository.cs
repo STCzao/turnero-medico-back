@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using turnero_medico_backend.Data;
 using turnero_medico_backend.Repositories.Interfaces;
@@ -19,9 +20,19 @@ namespace turnero_medico_backend.Repositories
             return await _dbSet.ToListAsync();
         }
 
-        public async Task<IEnumerable<T>> FindAsync(Func<T, bool> predicate)
+        public async Task<(IEnumerable<T> Items, int Total)> GetAllPagedAsync(int page, int pageSize)
         {
-            return await Task.FromResult(_dbSet.Where(predicate).ToList());
+            var total = await _dbSet.CountAsync();
+            var items = await _dbSet
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+            return (items, total);
+        }
+
+        public async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
+        {
+            return await _dbSet.Where(predicate).ToListAsync();
         }
 
         public async Task<T> AddAsync(T entity)

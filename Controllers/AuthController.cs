@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using turnero_medico_backend.DTOs.AuthDTOs;
-using turnero_medico_backend.Services;
+using turnero_medico_backend.Services.Interfaces;
 
 namespace turnero_medico_backend.Controllers
 {
@@ -34,6 +35,7 @@ namespace turnero_medico_backend.Controllers
 
         [HttpPost("login")]
         [AllowAnonymous]
+        [EnableRateLimiting("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequestDto request)
         {
             if (!ModelState.IsValid)
@@ -54,7 +56,7 @@ namespace turnero_medico_backend.Controllers
             var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             var email = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
             var nombre = User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
-            var rol = User.FindFirst("Rol")?.Value;
+            var rol = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
 
             return Ok(new
             {

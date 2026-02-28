@@ -14,10 +14,9 @@ namespace turnero_medico_backend.Services
         }
 
         // Obtiene el rol del usuario actual
-
         public string? GetUserRole()
         {
-            return _httpContextAccessor.HttpContext?.User?.FindFirst("Rol")?.Value;
+            return _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.Role)?.Value;
         }
 
         // Verifica si el usuario actual es Admin

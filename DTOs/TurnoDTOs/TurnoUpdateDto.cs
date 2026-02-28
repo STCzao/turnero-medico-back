@@ -20,8 +20,9 @@ namespace turnero_medico_backend.DTOs.TurnoDTOs
         [StringLength(500, MinimumLength = 5, ErrorMessage = "El motivo debe tener entre {2} y {1} caracteres")]
         public string? Motivo { get; set; }
 
-        [RegularExpression(@"^(Pendiente|Confirmado|Cancelado|Completado)$", 
-            ErrorMessage = "El estado debe ser: Pendiente, Confirmado, Cancelado o Completado")]
+        [RegularExpression(
+            @"^(Pendiente|Confirmado|Cancelado|Completado|Aceptado|Rechazado|PendienteValidacionDoctor)$",
+            ErrorMessage = "Estado inválido. Valores permitidos: Pendiente, Confirmado, Cancelado, Completado, Aceptado, Rechazado, PendienteValidacionDoctor")]
         public string? Estado { get; set; }
     }
 }

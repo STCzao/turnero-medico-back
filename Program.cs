@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql.EntityFrameworkCore.PostgreSQL;
 using System.Text;
+using System.Threading.RateLimiting;
 using turnero_medico_backend.Data;
 using turnero_medico_backend.Mappings;
 using turnero_medico_backend.Middleware;
@@ -90,6 +92,19 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Rate limiting: protege el endpoint de login contra fuerza bruta
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddFixedWindowLimiter("login", limiterOptions =>
+    {
+        limiterOptions.Window = TimeSpan.FromMinutes(1);
+        limiterOptions.PermitLimit = 5;            // máx 5 intentos por minuto por IP
+        limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        limiterOptions.QueueLimit = 0;             // sin cola, rechazar inmediatamente
+    });
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+});
+
 var app = builder.Build();
 
 // ← PRIMERO: Middleware para manejar excepciones globales
@@ -106,6 +121,9 @@ app.UseHttpsRedirection();
 
 // ← CORS debe ir ANTES de Authentication
 app.UseCors("AllowReactDev");
+
+// ← Rate limiting
+app.UseRateLimiter();
 
 // ← Esta línea es IMPORTANTE: Middleware de autenticación
 app.UseAuthentication();

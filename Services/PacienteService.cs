@@ -1,4 +1,5 @@
 using AutoMapper;
+using turnero_medico_backend.DTOs.Common;
 using turnero_medico_backend.DTOs.PacienteDTOs;
 using turnero_medico_backend.Models.Entities;
 using turnero_medico_backend.Repositories.Interfaces;
@@ -26,6 +27,21 @@ namespace turnero_medico_backend.Services
             return _mapper.Map<IEnumerable<PacienteReadDto>>(pacientes);
         }
 
+        public async Task<PagedResultDto<PacienteReadDto>> GetAllPagedAsync(int page, int pageSize)
+        {
+            if (!_currentUserService.IsAdmin())
+                throw new UnauthorizedAccessException("No tienes permisos para ver la lista de pacientes");
+
+            var (items, total) = await _repository.GetAllPagedAsync(page, pageSize);
+            return new PagedResultDto<PacienteReadDto>
+            {
+                Items = _mapper.Map<IEnumerable<PacienteReadDto>>(items),
+                Total = total,
+                Page = page,
+                PageSize = pageSize
+            };
+        }
+
         public async Task<PacienteReadDto?> GetByIdAsync(int id)
         {
             var paciente = await _repository.GetByIdAsync(id);
@@ -35,16 +51,14 @@ namespace turnero_medico_backend.Services
             return _mapper.Map<PacienteReadDto>(paciente);
         }
 
-        /// 
-        /// Obtiene el perfil del paciente autenticado actual
-        /// </summary>
+        // Obtiene el perfil del paciente autenticado actual
         public async Task<PacienteReadDto?> GetMyProfileAsync()
         {
-            var userEmail = _currentUserService.GetUserEmail();
-            if (string.IsNullOrEmpty(userEmail))
-                throw new UnauthorizedAccessException("No se pudo obtener el email del usuario autenticado");
+            var userId = _currentUserService.GetUserId();
+            if (string.IsNullOrEmpty(userId))
+                throw new UnauthorizedAccessException("No se pudo obtener el ID del usuario autenticado");
 
-            var pacientes = await _repository.FindAsync(p => p.Email == userEmail);
+            var pacientes = await _repository.FindAsync(p => p.UserId == userId);
             var paciente = pacientes.FirstOrDefault();
 
             if (paciente == null)
