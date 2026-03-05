@@ -13,20 +13,22 @@ namespace turnero_medico_backend.Controllers
     {
 
         [HttpGet]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin,Secretaria")]
         public async Task<ActionResult<PagedResultDto<TurnoReadDto>>> GetAll(
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 20)
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? estado = null)
         {
-            var turnos = await _service.GetAllPagedAsync(page, pageSize);
+            var turnos = await _service.GetAllPagedAsync(page, pageSize, estado);
             return Ok(turnos);
         }
 
-
         [HttpGet("paciente/{pacienteId}")]
-        public async Task<ActionResult<IEnumerable<TurnoReadDto>>> GetByPaciente(int pacienteId)
+        public async Task<ActionResult<IEnumerable<TurnoReadDto>>> GetByPaciente(
+            int pacienteId,
+            [FromQuery] string? estado = null)
         {
-            var turnos = await _service.GetByPacienteAsync(pacienteId);
+            var turnos = await _service.GetByPacienteAsync(pacienteId, estado);
             if (!turnos.Any())
                 return NotFound(new { mensaje = $"El paciente {pacienteId} no tiene turnos registrados" });
 
@@ -34,15 +36,16 @@ namespace turnero_medico_backend.Controllers
         }
 
         [HttpGet("doctor/{doctorId}")]
-        public async Task<ActionResult<IEnumerable<TurnoReadDto>>> GetByDoctor(int doctorId)
+        public async Task<ActionResult<IEnumerable<TurnoReadDto>>> GetByDoctor(
+            int doctorId,
+            [FromQuery] string? estado = null)
         {
-            var turnos = await _service.GetByDoctorAsync(doctorId);
+            var turnos = await _service.GetByDoctorAsync(doctorId, estado);
             if (!turnos.Any())
                 return NotFound(new { mensaje = $"El doctor {doctorId} no tiene turnos registrados" });
 
             return Ok(turnos);
         }
-
 
         [HttpGet("{id}")]
         public async Task<ActionResult<TurnoReadDto>> GetById(int id)
@@ -54,8 +57,9 @@ namespace turnero_medico_backend.Controllers
             return Ok(turno);
         }
 
-
+        // Paciente / Secretaria / Admin crean una solicitud (sin fecha)
         [HttpPost]
+        [Authorize(Roles = "Paciente,Secretaria,Admin")]
         public async Task<ActionResult<TurnoReadDto>> Create(TurnoCreateDto dto)
         {
             if (!ModelState.IsValid)
@@ -65,8 +69,53 @@ namespace turnero_medico_backend.Controllers
             return CreatedAtAction(nameof(GetById), new { id = turno.Id }, turno);
         }
 
+        // Secretaria / Admin: asignan fecha, doctor y confirman la solicitud
+        [HttpPost("{id}/confirmar")]
+        [Authorize(Roles = "Secretaria,Admin")]
+        public async Task<ActionResult<TurnoReadDto>> Confirmar(int id, ConfirmarTurnoDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
+            var turno = await _service.ConfirmarAsync(id, dto);
+            if (turno == null)
+                return NotFound(new { mensaje = $"Turno con ID {id} no encontrado" });
+
+            return Ok(turno);
+        }
+
+        // Secretaria / Admin: rechazan la solicitud con motivo obligatorio
+        [HttpPost("{id}/rechazar")]
+        [Authorize(Roles = "Secretaria,Admin")]
+        public async Task<ActionResult<TurnoReadDto>> Rechazar(int id, RechazarTurnoDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var turno = await _service.RechazarAsync(id, dto);
+            if (turno == null)
+                return NotFound(new { mensaje = $"Turno con ID {id} no encontrado" });
+
+            return Ok(turno);
+        }
+
+        // Cancelacion: Paciente, Doctor, Secretaria o Admin con reglas propias
+        [HttpPost("{id}/cancelar")]
+        public async Task<ActionResult<TurnoReadDto>> Cancelar(int id, CancelarTurnoDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var turno = await _service.CancelarAsync(id, dto);
+            if (turno == null)
+                return NotFound(new { mensaje = $"Turno con ID {id} no encontrado" });
+
+            return Ok(turno);
+        }
+
+        // Doctor: marca Completado/Ausente y agrega observacion clinica
         [HttpPatch("{id}")]
+        [Authorize(Roles = "Doctor,Admin")]
         public async Task<ActionResult<TurnoReadDto>> Update(int id, TurnoUpdateDto dto)
         {
             if (!ModelState.IsValid)
@@ -83,6 +132,7 @@ namespace turnero_medico_backend.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult> Delete(int id)
         {
             var result = await _service.DeleteAsync(id);

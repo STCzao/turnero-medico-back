@@ -4,37 +4,33 @@ namespace turnero_medico_backend.Models.Entities
     // Centraliza los valores para eliminar magic strings dispersos en el código.
     public static class EstadoTurno
     {
-        // Turno creado, esperando confirmación o cobertura.
-        public const string Pendiente = "Pendiente";
+        // Solicitud creada por el paciente, esperando que la secretaria asigne fecha y confirme.
+        public const string SolicitudPendiente = "SolicitudPendiente";
 
-        // Turno confirmado por el consultorio.
+        // Secretaria asignó fecha/hora, verificó cobertura y aprobó el turno.
         public const string Confirmado = "Confirmado";
 
-        // Turno cancelado por el paciente o el doctor.
-        public const string Cancelado = "Cancelado";
-
-        // Consulta finalizada.
-        public const string Completado = "Completado";
-
-        // Obra social verificada; el turno está aprobado.
-        public const string Aceptado = "Aceptado";
-
-        // Cobertura rechazada por el doctor tras validación externa.
+        // Secretaria rechazó la solicitud (motivo obligatorio).
         public const string Rechazado = "Rechazado";
 
-        // El doctor debe validar la cobertura en el sistema externo de la OS.
-        public const string PendienteValidacionDoctor = "PendienteValidacionDoctor";
+        // Doctor marcó la consulta como realizada.
+        public const string Completado = "Completado";
+
+        // Paciente no se presentó al turno.
+        public const string Ausente = "Ausente";
+
+        // Cancelado por paciente, secretaria, doctor o admin.
+        public const string Cancelado = "Cancelado";
 
         // Todos los valores válidos para usar en validaciones.
         public static readonly IReadOnlyList<string> Todos =
         [
-            Pendiente,
+            SolicitudPendiente,
             Confirmado,
-            Cancelado,
-            Completado,
-            Aceptado,
             Rechazado,
-            PendienteValidacionDoctor
+            Completado,
+            Ausente,
+            Cancelado
         ];
     }
 }

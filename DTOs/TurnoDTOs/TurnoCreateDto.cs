@@ -14,22 +14,22 @@ namespace turnero_medico_backend.DTOs.TurnoDTOs
         [RegularExpression(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$", ErrorMessage = "La especialidad solo puede contener letras y espacios")]
         public string Especialidad { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "El ID del doctor es obligatorio")]
+        // Opcional: el paciente puede solicitar un doctor específico.
+        // Si no lo indica, la secretaria asigna al confirmar.
         [Range(1, int.MaxValue, ErrorMessage = "El ID del doctor debe ser un número válido")]
-        public int DoctorId { get; set; }
-
-        [Required(ErrorMessage = "La fecha y hora del turno es obligatoria")]
-        [DataType(DataType.DateTime)]
-        [FutureOrToday(ErrorMessage = "El turno no puede ser en el pasado")]
-        [MaximumFutureDate(365, ErrorMessage = "El turno no puede estar más de 1 año en el futuro")]
-        public DateTime FechaHora { get; set; }
+        public int? DoctorId { get; set; }
 
         [Required(ErrorMessage = "El motivo de la consulta es obligatorio")]
         [StringLength(500, MinimumLength = 5, ErrorMessage = "El motivo debe tener entre {2} y {1} caracteres")]
         public string Motivo { get; set; } = string.Empty;
 
-        // ===== Nuevos campos para facturación =====
-        [StringLength(200, ErrorMessage = "Las notas de facturación no pueden exceder 200 caracteres")]
-        public string NotasFacturacion { get; set; } = string.Empty;  // Ej: "OSDE 80%, SOS Médico"
+        // ===== Datos declarativos de cobertura =====
+        // El paciente declara su cobertura. La secretaria verifica contra la realidad.
+
+        [StringLength(30, ErrorMessage = "El número de afiliado declarado no puede exceder 30 caracteres")]
+        public string? NumeroAfiliadoDeclarado { get; set; }
+
+        [StringLength(50, ErrorMessage = "El plan declarado no puede exceder 50 caracteres")]
+        public string? PlanAfiliadoDeclarado { get; set; }
     }
 }

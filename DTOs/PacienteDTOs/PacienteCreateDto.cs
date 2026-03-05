@@ -42,5 +42,9 @@ namespace turnero_medico_backend.DTOs.PacienteDTOs
 
         [StringLength(30, ErrorMessage = "El número de afiliado no puede exceder 30 caracteres")]
         public string NumeroAfiliado { get; set; } = string.Empty;  // Número de afiliado de la OS
+
+        // Plan dentro de la OS (ej: "Plan 310"). Opcional.
+        [StringLength(50, ErrorMessage = "El plan no puede exceder 50 caracteres")]
+        public string? PlanAfiliado { get; set; }
     }
 }

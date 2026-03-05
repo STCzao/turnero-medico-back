@@ -43,6 +43,8 @@ namespace turnero_medico_backend.Services
 
             obra.Nombre = dto.Nombre;
             obra.Especialidades = dto.Especialidades;
+            obra.Planes = dto.Planes;
+            obra.Observaciones = dto.Observaciones;
 
             await _repository.UpdateAsync(obra);
             return _mapper.Map<ObraSocialReadDto>(obra);

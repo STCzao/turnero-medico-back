@@ -3,24 +3,36 @@ namespace turnero_medico_backend.DTOs.TurnoDTOs;
 public class TurnoReadDto
 {
     public int Id { get; set; }
-    public DateTime FechaHora { get; set; }
+
+    // Null hasta que la secretaria confirme y asigne fecha/hora
+    public DateTime? FechaHora { get; set; }
     public string Motivo { get; set; } = string.Empty;
     public string Estado { get; set; } = string.Empty;
-    public int PacienteId { get; set; }
-    public int DoctorId { get; set; }
     public string Especialidad { get; set; } = string.Empty;
+
+    public int PacienteId { get; set; }
     public string PacienteNombre { get; set; } = string.Empty;
+
+    // Null si el paciente no eligió doctor al solicitar
+    public int? DoctorId { get; set; }
     public string DoctorNombre { get; set; } = string.Empty;
-    
-    // Campos para Familia y ObraSocial 
-    public string CreatedByUserId { get; set; } = string.Empty;  // Quién creó el turno
-    public DateTime CreatedAt { get; set; }  // Cuándo se creó
-    public int? ObraSocialId { get; set; }  // A qué OS facturar
-    public string NotasFacturacion { get; set; } = string.Empty;  // Detalles de facturación
-    public ObraSocialDTOs.ObraSocialReadDto? ObraSocial { get; set; }  // Datos de la OS
-    
-    // Validación de cobertura externa 
-    public string? MotivoRechazo { get; set; }  // Razón del rechazo (si aplica)
-    public DateTime? FechaValidacion { get; set; }  // Cuándo se validó
-    public string? ValidadoPorDoctorId { get; set; }  // ID del doctor que validó
+
+    // Trazabilidad
+    public string CreatedByUserId { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+
+    // Cobertura (declarada por paciente al solicitar)
+    public int? ObraSocialId { get; set; }
+    public string? NumeroAfiliadoDeclarado { get; set; }
+    public string? PlanAfiliadoDeclarado { get; set; }
+    public ObraSocialDTOs.ObraSocialReadDto? ObraSocial { get; set; }
+
+    // Gestión por secretaria
+    public string? NotasSecretaria { get; set; }
+    public string? MotivoRechazo { get; set; }
+    public string? ConfirmadaPorId { get; set; }
+    public DateTime? FechaGestion { get; set; }
+
+    // Observación clínica del doctor
+    public string? ObservacionClinica { get; set; }
 }
