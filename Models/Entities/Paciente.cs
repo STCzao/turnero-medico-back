@@ -27,6 +27,12 @@ namespace turnero_medico_backend.Models.Entities
         public int? ObraSocialId { get; set; }  // FK → ObraSocial (nullable)
         
         public string NumeroAfiliado { get; set; } = string.Empty;
+
+        // Plan dentro de la OS declarado por el paciente (ej: "Plan 310"). Nullable.
+        public string? PlanAfiliado { get; set; }
+
+        // FK → AspNetUsers.Id. Une Paciente con su cuenta de usuario (null si es dependiente sin cuenta).
+        public string? UserId { get; set; }
         
         // ===== Relaciones =====
         public virtual ICollection<Turno> Turnos { get; set; } = new List<Turno>();

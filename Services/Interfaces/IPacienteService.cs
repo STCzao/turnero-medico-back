@@ -1,3 +1,4 @@
+using turnero_medico_backend.DTOs.Common;
 using turnero_medico_backend.DTOs.PacienteDTOs;
 using turnero_medico_backend.Models.Entities;
 
@@ -6,6 +7,7 @@ namespace turnero_medico_backend.Services.Interfaces
     public interface IPacienteService
     {
         Task<IEnumerable<PacienteReadDto>> GetAllAsync();
+        Task<PagedResultDto<PacienteReadDto>> GetAllPagedAsync(int page, int pageSize);
         Task<PacienteReadDto?> GetByIdAsync(int id);
         Task<PacienteReadDto?> GetMyProfileAsync();  // ← NUEVO: Obtener perfil propio
         Task<PacienteReadDto> CreateAsync(PacienteCreateDto dto);

@@ -1,4 +1,5 @@
 using AutoMapper;
+using turnero_medico_backend.DTOs.Common;
 using turnero_medico_backend.DTOs.DoctorDTOs;
 using turnero_medico_backend.Models.Entities;
 using turnero_medico_backend.Repositories.Interfaces;
@@ -22,10 +23,25 @@ namespace turnero_medico_backend.Services
             return doctors.Select(d => _mapper.Map<DoctorReadDto>(d));
         }
 
+        public async Task<PagedResultDto<DoctorReadDto>> GetAllPagedAsync(int page, int pageSize)
+        {
+            if (!_currentUserService.IsAdmin())
+                throw new UnauthorizedAccessException("No tienes permisos para ver el listado de doctores.");
+
+            var (items, total) = await _repository.GetAllPagedAsync(page, pageSize);
+            return new PagedResultDto<DoctorReadDto>
+            {
+                Items = items.Select(d => _mapper.Map<DoctorReadDto>(d)),
+                Total = total,
+                Page = page,
+                PageSize = pageSize
+            };
+        }
+
         public async Task<IEnumerable<DoctorReadDto>> GetByEspecialidadAsync(string especialidad)
         {
-            var doctors = await _repository.FindAsync(d => 
-                string.Equals(d.Especialidad, especialidad, StringComparison.OrdinalIgnoreCase));
+            var especialidadLower = especialidad.ToLower();
+            var doctors = await _repository.FindAsync(d => d.Especialidad.ToLower() == especialidadLower);
             return doctors.Select(_mapper.Map<DoctorReadDto>);
         }
 
@@ -35,16 +51,14 @@ namespace turnero_medico_backend.Services
             return doctor == null ? null : _mapper.Map<DoctorReadDto>(doctor);
         }
 
-        /// 
-        /// Obtiene el perfil del doctor autenticado actual
-        /// </summary>
+        // Obtiene el perfil del doctor autenticado actual
         public async Task<DoctorReadDto?> GetMyProfileAsync()
         {
-            var userEmail = _currentUserService.GetUserEmail();
-            if (string.IsNullOrEmpty(userEmail))
-                throw new UnauthorizedAccessException("No se pudo obtener el email del usuario autenticado");
+            var userId = _currentUserService.GetUserId();
+            if (string.IsNullOrEmpty(userId))
+                throw new UnauthorizedAccessException("No se pudo obtener el ID del usuario autenticado");
 
-            var doctores = await _repository.FindAsync(d => d.Email == userEmail);
+            var doctores = await _repository.FindAsync(d => d.UserId == userId);
             var doctor = doctores.FirstOrDefault();
 
             if (doctor == null)

@@ -34,9 +34,10 @@ namespace turnero_medico_backend.Services
         {
             var roles = new[]
             {
-                new ApplicationRole { Name = "Paciente", Descripcion = "Rol para pacientes que pueden agendar turnos" },
-                new ApplicationRole { Name = "Doctor",   Descripcion = "Rol para doctores que pueden recibir turnos" },
-                new ApplicationRole { Name = "Admin",    Descripcion = "Rol para administradores con acceso total" }
+                new ApplicationRole { Name = "Paciente",    Descripcion = "Rol para pacientes que pueden solicitar turnos" },
+                new ApplicationRole { Name = "Doctor",      Descripcion = "Rol para doctores que pueden gestionar sus turnos" },
+                new ApplicationRole { Name = "Secretaria",  Descripcion = "Rol para secretarias que confirman y gestionan turnos del consultorio" },
+                new ApplicationRole { Name = "Admin",       Descripcion = "Rol para administradores con acceso total" }
             };
 
             foreach (var role in roles)

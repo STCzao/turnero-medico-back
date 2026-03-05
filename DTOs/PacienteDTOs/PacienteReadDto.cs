@@ -16,5 +16,6 @@ public class PacienteReadDto
     public int TipoPago { get; set; }  // 0=ObraSocial, 1=Particular, 2=SinCobertura
     public int? ObraSocialId { get; set; }  // FK a ObraSocial
     public string NumeroAfiliado { get; set; } = string.Empty;  // Número de afiliado
+    public string? PlanAfiliado { get; set; }  // Plan dentro de la OS
     public ObraSocialDTOs.ObraSocialReadDto? ObraSocial { get; set; }  // Datos de la OS
 }

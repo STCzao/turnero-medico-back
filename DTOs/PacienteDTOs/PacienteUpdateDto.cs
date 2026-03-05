@@ -33,5 +33,9 @@ namespace turnero_medico_backend.DTOs.PacienteDTOs
         [Required(ErrorMessage = "La fecha de nacimiento es obligatoria")]
         [DataType(DataType.Date)]
         public DateTime FechaNacimiento { get; set; }
+
+        // Plan dentro de la OS (ej: "Plan 310"). Opcional.
+        [StringLength(50, ErrorMessage = "El plan no puede exceder 50 caracteres")]
+        public string? PlanAfiliado { get; set; }
     }
 }

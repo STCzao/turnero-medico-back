@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using turnero_medico_backend.Data;
@@ -12,9 +13,11 @@ using turnero_medico_backend.Data;
 namespace turnero_medico_backend.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260228065753_AddUserIdToDoctorAndPaciente")]
+    partial class AddUserIdToDoctorAndPaciente
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -303,14 +306,6 @@ namespace turnero_medico_backend.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("Observaciones")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<List<string>>("Planes")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
                     b.HasKey("Id");
 
                     b.ToTable("ObrasSociales");
@@ -353,9 +348,6 @@ namespace turnero_medico_backend.Migrations
                     b.Property<int?>("ObraSocialId")
                         .HasColumnType("integer");
 
-                    b.Property<string>("PlanAfiliado")
-                        .HasColumnType("text");
-
                     b.Property<string>("ResponsableId")
                         .HasColumnType("text");
 
@@ -387,9 +379,6 @@ namespace turnero_medico_backend.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("ConfirmadaPorId")
-                        .HasColumnType("text");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -397,21 +386,17 @@ namespace turnero_medico_backend.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int?>("DoctorId")
+                    b.Property<int>("DoctorId")
                         .HasColumnType("integer");
-
-                    b.Property<string>("Especialidad")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<string>("Estado")
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<DateTime?>("FechaGestion")
+                    b.Property<DateTime>("FechaHora")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateTime?>("FechaHora")
+                    b.Property<DateTime?>("FechaValidacion")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Motivo")
@@ -421,28 +406,18 @@ namespace turnero_medico_backend.Migrations
                     b.Property<string>("MotivoRechazo")
                         .HasColumnType("text");
 
-                    b.Property<string>("NotasSecretaria")
-                        .HasColumnType("text");
-
-                    b.Property<string>("NumeroAfiliadoDeclarado")
+                    b.Property<string>("NotasFacturacion")
+                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<int?>("ObraSocialId")
                         .HasColumnType("integer");
 
-                    b.Property<string>("ObservacionClinica")
-                        .HasColumnType("text");
-
                     b.Property<int>("PacienteId")
                         .HasColumnType("integer");
 
-                    b.Property<string>("PlanAfiliadoDeclarado")
+                    b.Property<string>("ValidadoPorDoctorId")
                         .HasColumnType("text");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bytea");
 
                     b.HasKey("Id");
 
@@ -521,7 +496,8 @@ namespace turnero_medico_backend.Migrations
                     b.HasOne("turnero_medico_backend.Models.Entities.Doctor", "Doctor")
                         .WithMany("Turnos")
                         .HasForeignKey("DoctorId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("turnero_medico_backend.Models.Entities.ObraSocial", "ObraSocial")
                         .WithMany()

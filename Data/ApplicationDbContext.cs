@@ -43,17 +43,27 @@ namespace turnero_medico_backend.Data
             .HasForeignKey(t => t.PacienteId)
             .OnDelete(DeleteBehavior.Restrict);
 
-            // Relación: Turno-Doctor (ya existe)
+            // Relación: Turno-Doctor (DoctorId nullable: el paciente puede no elegir doctor)
             modelBuilder.Entity<Turno>()
             .HasOne(t => t.Doctor)
             .WithMany(d => d.Turnos)
             .HasForeignKey(t => t.DoctorId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.Restrict)
+            .IsRequired(false);
 
-            // ObraSocial: especialidades como columna JSONB
+            // ObraSocial: especialidades y planes como JSONB
             modelBuilder.Entity<ObraSocial>()
                 .Property(o => o.Especialidades)
                 .HasColumnType("jsonb");
+
+            modelBuilder.Entity<ObraSocial>()
+                .Property(o => o.Planes)
+                .HasColumnType("jsonb");
+
+            // Turno: concurrencia optimista
+            modelBuilder.Entity<Turno>()
+                .Property(t => t.RowVersion)
+                .IsRowVersion();
 
             // Índices únicos
             modelBuilder.Entity<Paciente>()
