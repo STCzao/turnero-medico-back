@@ -70,12 +70,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 // Registrar Repository Pattern genérico
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 
+// TurnoRepository tiene registro explícito porque implementa ITurnoRepository
+// (métodos especializados con Include para navegaciones de Turno).
+builder.Services.AddScoped<ITurnoRepository, TurnoRepository>();
+
 // Registrar Servicios
 builder.Services.AddScoped<IPacienteService, PacienteService>();
 builder.Services.AddScoped<IDoctorService, DoctorService>();
 builder.Services.AddScoped<ITurnoService, TurnoService>();
 builder.Services.AddScoped<IObraSocialService, ObraSocialService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IHorarioService, HorarioService>();
 builder.Services.AddScoped<SeedDataService>();
 builder.Services.AddScoped<CurrentUserService>();
 

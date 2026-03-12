@@ -2,7 +2,9 @@ using System.ComponentModel.DataAnnotations;
 
 namespace turnero_medico_backend.DTOs.AuthDTOs
 {
-    public class RegisterRequestDto
+    // DTO para el registro de secretarias.
+    // Solo puede ser usado por un Admin (endpoint protegido con [Authorize(Roles = "Admin")]).
+    public class RegisterSecretariaDto
     {
         [Required(ErrorMessage = "El email es obligatorio")]
         [EmailAddress(ErrorMessage = "El email no tiene un formato válido")]
@@ -20,11 +22,5 @@ namespace turnero_medico_backend.DTOs.AuthDTOs
         [Required(ErrorMessage = "El apellido es obligatorio")]
         [StringLength(100, MinimumLength = 2, ErrorMessage = "El apellido debe tener entre {2} y {1} caracteres")]
         public string Apellido { get; set; } = string.Empty;
-
-        // El auto-registro público solo permite el rol Paciente.
-        // Doctor, Admin y Secretaria solo pueden ser asignados por un administrador.
-        [Required(ErrorMessage = "El rol es obligatorio")]
-        [RegularExpression("^Paciente$", ErrorMessage = "El auto-registro solo está disponible para el rol Paciente")]
-        public string Rol { get; set; } = "Paciente";
     }
 }

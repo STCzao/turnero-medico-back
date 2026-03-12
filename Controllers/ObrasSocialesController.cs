@@ -7,7 +7,7 @@ namespace turnero_medico_backend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin, Secretaria")]
     public class ObrasSocialesController(IObraSocialService _service) : ControllerBase
     {
         [HttpGet]

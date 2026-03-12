@@ -1,123 +1,605 @@
-# Análisis Completo — turnero-medico-backend
-Fecha: 28 de febrero de 2026
+# Análisis Profesional — turnero-medico-backend
+
+**Proyecto:** Sistema de Gestión de Turnos Médicos (Backend REST API)  
+**Fecha:** 10 de marzo de 2026 — Revisión 5 (post Fase 1 + Fase 2)  
+**Stack:** .NET 8 · ASP.NET Core · EF Core 8 · PostgreSQL · JWT · ASP.NET Identity  
+**Estado de compilación:** ✅ 0 errores · 0 advertencias  
+**Migraciones:** 9 (schema estable)
 
 ---
 
-## Estado General
+## Tabla de Contenidos
 
-El proyecto compila con 0 errores y 0 advertencias. La migración RefactorTurnoFlowAndSecretaria está aplicada en la base de datos. La arquitectura base es correcta y el flujo de negocio rediseñado (solicitud pendiente → secretaria confirma/rechaza → doctor marca completado/ausente) está implementado de manera consistente en todas las capas.
-
----
-
-## 1. Arquitectura
-
-La separación de responsabilidades es clara: Controller → Service (con interfaz) → Repository genérico → DbContext. El repository pattern usa Expression como predicados, lo cual es correcto porque evita que IQueryable se filtre fuera de la capa de datos. AutoMapper está centralizado en AutoMapperProfile. CurrentUserService actúa como servicio dedicado a leer claims del usuario autenticado. GlobalExceptionMiddleware captura excepciones no manejadas. PagedResultDto es genérico y reutilizable.
-
-Problemas encontrados:
-
-CRÍTICO — SaveChangesAsync silencia excepciones. En Repository.SaveChangesAsync el catch devuelve false pero todo el código que llama a UpdateAsync, AddAsync y DeleteAsync nunca verifica ese resultado. Si la base de datos rechaza una operación (por ejemplo una violación de concurrencia con RowVersion), el servicio retorna el resultado como si hubiera tenido éxito. Esto es un bug silencioso que puede causar inconsistencias difíciles de depurar.
-
-CRÍTICO — Sin transacciones en registro de usuarios. Los métodos RegisterPacienteAsync y RegisterDoctorAsync crean primero el usuario en ASP.NET Identity y luego crean la entidad de dominio (Paciente o Doctor) en dos pasos separados. Si el segundo paso falla, queda un usuario de Identity sin entidad asociada, lo cual rompe todas las operaciones posteriores. El propio código tiene un comentario TODO reconociendo este problema pero no está resuelto.
-
-MEDIA — SeedDataService y CurrentUserService no tienen interfaz. Están registrados en el contenedor de DI como clase concreta. Esto rompe el principio de inyección por abstracción y hace imposible reemplazarlos en tests sin modificar el código de producción.
-
-MEDIA — El Repository genérico no ofrece mecanismo de Include (eager loading). Los métodos GetAllAsync, GetAllPagedAsync y FindAsync hacen queries simples sin cargar propiedades de navegación. Esto produce un problema grave descrito en la sección de rendimiento.
+1. [Resumen Ejecutivo](#1-resumen-ejecutivo)
+2. [Inventario del Sistema](#2-inventario-del-sistema)
+3. [Arquitectura](#3-arquitectura)
+4. [Flujos de Negocio](#4-flujos-de-negocio)
+5. [Catálogo de Endpoints](#5-catálogo-de-endpoints)
+6. [Estado de Calidad — Issues Pendientes](#6-estado-de-calidad--issues-pendientes)
+7. [Análisis de Seguridad](#7-análisis-de-seguridad)
+8. [Evaluación MVP — Readiness para Frontend](#8-evaluación-mvp--readiness-para-frontend)
+9. [Roadmap — Fases Siguientes](#9-roadmap--fases-siguientes)
+10. [Métricas](#10-métricas)
+11. [Historial de Cambios](#11-historial-de-cambios)
 
 ---
 
-## 2. Seguridad
+## 1. Resumen Ejecutivo
 
-Fortalezas: JWT configurado con ClockSkew en cero, rate limiting de 5 intentos por minuto en login, roles verificados tanto en el controller como en el servicio (doble barrera), el campo Estado es ignorado por AutoMapper al crear un turno (el cliente no puede forzar el estado inicial).
+El backend implementa una API REST completa para la gestión de turnos de un consultorio médico. El sistema modela un flujo realista de 6 estados (solicitud → confirmación/rechazo → completado/ausente/cancelado) con 4 roles diferenciados (Paciente, Doctor, Secretaria, Admin).
 
-Problemas encontrados:
+Tras la Fase 1 (estabilización de bugs críticos) y la Fase 2 (features MVP), el sistema ofrece:
 
-CRÍTICO — El endpoint de registro público permite que cualquier usuario se auto-asigne el rol Admin. En RegisterAsync, la lista de roles válidos incluye "Admin". Cualquier persona puede hacer un POST al endpoint de registro con rol "Admin" y obtener privilegios totales. Este endpoint debería solo permitir el rol "Paciente" para auto-registro. Los roles "Doctor", "Admin" y "Secretaria" deberían ser asignables únicamente por un administrador.
+- **Registro seguro** con vinculación por DNI (pacientes) y Matrícula (doctores) dentro de transacciones.
+- **Gestión completa del ciclo de vida del turno** con máquina de estados protegida.
+- **Endpoints operativos** para cada rol: el paciente ve sus turnos, el doctor su agenda, la secretaria gestiona pendientes.
+- **Sistema de horarios** con cálculo de disponibilidad en tiempo real.
+- **Dependientes** (menores de edad sin cuenta propia).
+- **Historial clínico básico** (turnos completados con observación clínica).
 
-ALTA — La clave secreta JWT no tiene validación de longitud mínima al iniciar la aplicación. Si appsettings.json tiene una clave corta (menos de 256 bits para HMAC-SHA256), la aplicación arranca sin error pero el token generado es criptográficamente débil. Debería validarse en startup y lanzar una excepción si la clave no cumple el mínimo.
-
-MEDIA — El JWT usa el campo user.Rol (campo custom en ApplicationUser) en lugar de los roles de Identity. Si un administrador cambia el rol de un usuario en la base de datos usando UserManager, el token JWT existente sigue siendo válido con el rol anterior hasta que expire. No hay blacklisting ni invalidación de tokens. Para un sistema médico esto puede ser relevante si se necesita revocar permisos de inmediato.
-
-MEDIA — Solo el endpoint de login tiene rate limiting. Los endpoints de creación de turnos, registro de pacientes y consultas no tienen protección contra flood.
-
-BAJA — appsettings.json probablemente contiene la SecretKey en texto plano en el repositorio. Debería usarse User Secrets en desarrollo y variables de entorno en producción.
-
----
-
-## 3. Máquina de Estados (Turno)
-
-El flujo de 6 estados está correctamente definido y las transiciones son coherentes. Las transiciones válidas implementadas son:
-
-SolicitudPendiente puede pasar a Confirmado (por Secretaria/Admin en ConfirmarAsync), a Rechazado (por Secretaria/Admin en RechazarAsync), o a Cancelado (por cualquier rol en CancelarAsync).
-Confirmado puede pasar a Completado (por Doctor/Admin en UpdateAsync), a Ausente (por Doctor/Admin en UpdateAsync), o a Cancelado (por cualquier rol en CancelarAsync).
-
-Problemas encontrados:
-
-ALTA — UpdateAsync no valida en la capa de servicio que el estado nuevo sea Completado o Ausente. El DTO tiene una anotación RegularExpression que restringe los valores, pero las validaciones de DTO se pueden eludir si el endpoint es llamado directamente. Un Admin que llama a PATCH podría poner cualquier estado arbitrario incluyendo SolicitudPendiente, revirtiendo un turno ya procesado. La validación debe existir en la capa de servicio, no solo en las Data Annotations del DTO.
-
-MEDIA — La especialidad del turno no se valida contra la especialidad del doctor al confirmar. Al crear la solicitud, si el paciente elige un doctor específico, se verifica que su especialidad coincida. Pero cuando la secretaria confirma y asigna (o reasigna) un doctor, no se hace este chequeo. La secretaria podría confirmar un turno de Cardiología asignando un Traumatólogo.
-
-MEDIA — El campo MotivoRechazo se reutiliza tanto para rechazos como para cancelaciones. Cuando se cancela, el código hace turno.MotivoRechazo = dto.Motivo. Semánticamente, una cancelación no es un rechazo. Convendría un campo MotivoCancelacion separado, o renombrar el campo existente a algo más neutral como NotasGestion o MotivoCierre.
+El proyecto compila sin errores y está en posición de conectarse con un frontend para conformar un MVP funcional.
 
 ---
 
-## 4. Rendimiento y Queries (CRÍTICO)
+## 2. Inventario del Sistema
 
-Este es el área con el problema más impactante en términos de funcionalidad real.
+### 2.1 Entidades (8)
 
-CRÍTICO — Los nombres PacienteNombre y DoctorNombre en TurnoReadDto siempre muestran "No disponible" o "Sin asignar". El AutoMapperProfile mapea estos campos desde las propiedades de navegación Turno.Paciente y Turno.Doctor. Sin embargo, el Repository genérico nunca hace Include de estas propiedades. Como EF Core tiene lazy loading deshabilitado por defecto, Turno.Paciente y Turno.Doctor son siempre null al momento del mapeo. El fallback del mapeador devuelve "No disponible" y "Sin asignar" respectivamente. Esto afecta absolutamente todos los endpoints que devuelven TurnoReadDto.
+| Entidad | Campos clave | Relaciones |
+|---------|-------------|------------|
+| **ApplicationUser** | Nombre, Apellido, Rol, DoctorId?, PacienteId?, FechaRegistro | Extiende IdentityUser |
+| **ApplicationRole** | Descripcion | Extiende IdentityRole |
+| **Doctor** | Matricula (unique), Especialidad, UserId? | 1:N Turnos, 1:N Horarios |
+| **Paciente** | Dni (unique), FechaNacimiento, TipoPago, ObraSocialId?, ResponsableId?, UserId? | 1:N Turnos, N:1 ObraSocial |
+| **Turno** | Estado, FechaHora?, Especialidad, Motivo, RowVersion, ObservacionClinica? | N:1 Paciente, N:1 Doctor?, N:1 ObraSocial? |
+| **ObraSocial** | Especialidades (JSONB), Planes (JSONB), Observaciones | 1:N Pacientes |
+| **Horario** | DoctorId, DiaSemana (0-6), HoraInicio, HoraFin, DuracionMinutos | N:1 Doctor (Cascade) |
+| **EstadoTurno** | Clase estática con 6 constantes + lista `Todos` para validación | — |
 
-Para corregirlo hay dos opciones: agregar métodos especializados al repository que hagan Include, o agregar métodos de query directamente a TurnoService usando el DbContext con Include. La segunda opción es más pragmática dado el tamaño del proyecto.
+### 2.2 DTOs (22 clases)
 
-ALTA — Sin índices en las columnas más consultadas. El campo Turno.Estado es filtrado en todos los endpoints que aceptan el parámetro ?estado. Los campos Turno.PacienteId y Turno.DoctorId son filtrados en GetByPacienteAsync y GetByDoctorAsync respectivamente. Los campos Doctor.UserId y Paciente.UserId son consultados en cada verificación de autorización dentro de los servicios. Ninguno de estos tiene índice explícito configurado en ApplicationDbContext. En tablas con miles de registros, estas queries hacen full table scan.
+| Módulo | DTOs |
+|--------|------|
+| Auth | LoginRequestDto, RegisterPacienteDto, RegisterDoctorDto, RegisterSecretariaDto, RegisterRequestDto (legacy) |
+| Turno | TurnoCreateDto, TurnoReadDto, TurnoUpdateDto, ConfirmarTurnoDto, RechazarTurnoDto, CancelarTurnoDto |
+| Doctor | DoctorCreateDto, DoctorReadDto, DoctorUpdateDto |
+| Paciente | PacienteCreateDto, PacienteReadDto, PacienteUpdateDto, DependienteCreateDto |
+| ObraSocial | ObraSocialCreateDto, ObraSocialReadDto, ObraSocialUpdateDto |
+| Horario | HorarioCreateDto, HorarioReadDto, SlotDisponibleDto |
+| Common | PagedResultDto\<T\> |
 
-MEDIA — GetAllAsync sin paginación existe en DoctorService y ObraSocialService. Carga todos los registros en memoria de una vez. Aceptable para catálogos pequeños pero es una deuda técnica que debería eliminarse.
+### 2.3 Servicios (8)
+
+| Servicio | Responsabilidad | Interfaz |
+|----------|-----------------|----------|
+| AuthService | Registro (3 flujos) + Login + JWT | IAuthService ✓ |
+| TurnoService | CRUD + máquina de estados + agenda + historial | ITurnoService ✓ |
+| DoctorService | CRUD + búsqueda por especialidad + perfil propio | IDoctorService ✓ |
+| PacienteService | CRUD + perfil propio + dependientes | IPacienteService ✓ |
+| ObraSocialService | CRUD obras sociales | IObraSocialService ✓ |
+| HorarioService | CRUD horarios + cálculo de disponibilidad | IHorarioService ✓ |
+| CurrentUserService | Extrae claims del usuario autenticado | ✗ (sin interfaz) |
+| SeedDataService | Seed de roles + admin por defecto | ✗ (sin interfaz) |
+
+### 2.4 Repositorios (2)
+
+| Repositorio | Tipo | Especialización |
+|-------------|------|-----------------|
+| Repository\<T\> | Genérico | CRUD + Find + Paginación |
+| TurnoRepository | Especializado | Include de Paciente, Doctor, ObraSocial + filtro por estado paginado en BD |
+
+### 2.5 Índices de Base de Datos
+
+| Índice | Columna(s) | Tipo |
+|--------|-----------|------|
+| IX_Pacientes_Dni | Dni | Unique |
+| IX_Doctores_Matricula | Matricula | Unique |
+| IX_Turnos_Estado | Estado | Simple |
+| IX_Turnos_PacienteId | PacienteId | FK |
+| IX_Turnos_DoctorId | DoctorId | FK |
+| IX_Doctores_UserId | UserId | Simple |
+| IX_Pacientes_UserId | UserId | Simple |
+| IX_Pacientes_ResponsableId | ResponsableId | Simple |
+| IX_Horarios_DoctorId_DiaSemana | DoctorId + DiaSemana | Compuesto |
 
 ---
 
-## 5. Diseño de API
+## 3. Arquitectura
 
-Fortalezas: convenciones REST respetadas, CreatedAtAction en creación, NoContent en eliminación, paginación implementada.
+### 3.1 Diagrama de Componentes
 
-Problemas encontrados:
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           ASP.NET Core Pipeline                             │
+│                                                                             │
+│  HTTP → GlobalExceptionMiddleware → JWT Auth → RateLimiter → CORS → MVC    │
+│                                                                             │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                         Controllers (6)                               │  │
+│  │  Auth · Turnos · Doctores · Pacientes · ObrasSociales · Horarios     │  │
+│  │  [Authorize] + [Authorize(Roles)] por endpoint                       │  │
+│  └────────────────────────────┬──────────────────────────────────────────┘  │
+│                               │  DTOs (validados con DataAnnotations)       │
+│  ┌────────────────────────────▼──────────────────────────────────────────┐  │
+│  │                      Services (8) + AutoMapper                        │  │
+│  │  Lógica de negocio · Autorización por rol · Máquina de estados       │  │
+│  │  CurrentUserService: extrae identity del ClaimsPrincipal             │  │
+│  └────────────────────────────┬──────────────────────────────────────────┘  │
+│                               │                                             │
+│  ┌────────────────────────────▼──────────────────────────────────────────┐  │
+│  │                     Repositories (2)                                   │  │
+│  │  Repository<T> genérico · TurnoRepository con Includes               │  │
+│  └────────────────────────────┬──────────────────────────────────────────┘  │
+│                               │                                             │
+│  ┌────────────────────────────▼──────────────────────────────────────────┐  │
+│  │                  ApplicationDbContext (EF Core 8)                      │  │
+│  │  PostgreSQL · ASP.NET Identity · JSONB · RowVersion (concurrencia)    │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
-ALTA — El Doctor no puede descubrir su propio ID numérico. Para usar el endpoint GET /api/turnos/doctor/{id}, el Doctor necesita conocer su Doctor.Id (número entero en la tabla Doctores). No existe un endpoint GET /api/doctores/me que devuelva el perfil completo del doctor autenticado. El método GetMyProfileAsync existe en DoctorService pero nunca fue expuesto como endpoint en DoctoresController.
+### 3.2 Principios Aplicados
 
-MEDIA — Los endpoints GetByPaciente y GetByDoctor devuelven 404 cuando la lista está vacía. Una lista vacía debería ser 200 con un array vacío. El 404 significa "recurso no encontrado", pero el recurso (el paciente, el doctor) sí existe — simplemente no tiene turnos. Esto confunde a los clientes HTTP y rompe convenciones REST estándar.
+| Principio | Implementación |
+|-----------|---------------|
+| **Separation of Concerns** | Controllers solo manejan HTTP; Services contienen lógica de negocio; Repositories encapsulan data access. |
+| **Dependency Inversion** | Todas las dependencias inyectadas por interfaz (excepto CurrentUserService y SeedDataService). |
+| **Single Responsibility** | Cada servicio maneja una entidad de dominio. AuthService maneja exclusivamente autenticación/registro. |
+| **Repository Pattern** | Genérico para CRUD estándar + especializado para queries complejas (TurnoRepository con Includes). |
+| **Fail-Fast** | Middleware global captura excepciones y las mapea a HTTP status codes semánticos. |
 
-MEDIA — El parámetro ?estado no valida que el valor sea uno de los 6 estados permitidos. Si un cliente manda ?estado=pendiente (minúscula) o ?estado=invalido, la query simplemente retorna 0 resultados sin ningún error o advertencia. Debería retornar 400 con la lista de valores válidos.
+### 3.3 Fortalezas de la Arquitectura
 
-MEDIA — El PATCH /{id} recibe un DTO que incluye el campo Id en el body. Ya se valida que coincida con el ID de la URL, pero es mejor práctica no incluir el ID en el body de PATCH dado que ya viene en la ruta.
-
-BAJA — No existe GET /api/turnos/me para que el paciente autenticado vea sus propios turnos directamente, sin necesidad de conocer su PacienteId numérico. Actualmente el paciente necesita llamar a GetByPaciente con su ID propio, que tiene que haber obtenido de alguna otra llamada previa.
+- **Doble barrera de autorización:** `[Authorize(Roles)]` en controller + verificación en service. Si el controller se bypasea, el service la atrapa.
+- **Estado inyectado server-side:** Al crear un turno, `Estado`, `CreatedAt` y `CreatedByUserId` se asignan en el service, nunca desde el DTO del cliente.
+- **Filtrado en base de datos:** `TurnoRepository.GetAllWithDetailsPagedAsync` filtra por estado y pagina directamente en la query SQL.
+- **Concurrencia optimista:** `RowVersion` en Turno previene sobreescrituras simultáneas.
+- **Trazabilidad:** Cada turno registra `CreatedByUserId`, `ConfirmadaPorId`, `FechaGestion`, `CreatedAt`.
 
 ---
 
-## 6. Calidad de Código
+## 4. Flujos de Negocio
 
-DoctorService inyecta CurrentUserService como clase concreta en lugar de interfaz. Lo mismo ocurre en PacienteService. Si se cambia la implementación de CurrentUserService, hay que modificar cada constructor que la use.
+### 4.1 Máquina de Estados del Turno
 
-TurnoService es el servicio más largo del proyecto con más de 400 líneas. Mezcla autorización, validación de negocio, y persistencia. Para este scope es manejable, pero en un proyecto mayor convendría separar la lógica de autorización en handlers dedicados de ASP.NET Authorization.
+```
+                    ┌──────────────┐
+              ┌────►│  Rechazado   │  Secretaria/Admin + MotivoRechazo obligatorio
+              │     └──────────────┘
+              │
+┌─────────────┴──────┐   Confirmar    ┌────────────┐   Completar    ┌────────────┐
+│ SolicitudPendiente ├───────────────►│ Confirmado  ├──────────────►│ Completado │
+└────────┬───────────┘  Sec/Admin +   └──┬────┬────┘   Doctor +    └────────────┘
+         │              FechaHora +      │    │        Observación
+         │              DoctorId         │    │
+         │                               │    │  Ausente    ┌──────────┐
+         │                               │    └────────────►│ Ausente  │
+         │                               │      Doctor     └──────────┘
+         │       Cancelar                │  Cancelar
+         └──────────┬────────────────────┘
+                    ▼
+              ┌───────────┐
+              │ Cancelado │  Todos los roles (con reglas específicas)
+              └───────────┘
+```
 
-ApplicationDbContext tiene comentarios XML mal formados (usan etiquetas en texto plano en lugar de la sintaxis XML correcta de documentación).
+**Transiciones válidas:**
 
-Repository.SaveChangesAsync es público pero no está declarado en la interfaz IRepository. Se llama internamente, lo cual es correcto, pero exponerlo como método público en la clase concreta genera confusión sobre cuándo debe llamarse externamente.
+| Desde | Hacia | Quién | Requisitos |
+|-------|-------|-------|------------|
+| SolicitudPendiente | Confirmado | Secretaria, Admin | FechaHora + DoctorId; especialidad del doctor debe coincidir con la del turno |
+| SolicitudPendiente | Rechazado | Secretaria, Admin | MotivoRechazo obligatorio (5-500 chars) |
+| SolicitudPendiente | Cancelado | Paciente (propietario o responsable), Secretaria, Admin | Motivo opcional |
+| Confirmado | Completado | Doctor (asignado), Admin | ObservacionClinica recomendada |
+| Confirmado | Ausente | Doctor (asignado), Admin | — |
+| Confirmado | Cancelado | Paciente, Doctor (asignado), Secretaria, Admin | Motivo opcional |
 
-No existe ningún proyecto de tests. Los servicios son testeables porque usan inyección por interfaz, pero actualmente no hay ninguna cobertura de tests unitarios ni de integración.
+**Cualquier otra transición lanza `InvalidOperationException` → HTTP 400.**
 
 ---
 
-## Resumen Priorizado
+### 4.2 Flujo de Registro de Paciente
 
-Los siguientes problemas deben resolverse en orden de impacto:
+```
+  Cliente (Frontend)                         Backend
+  ─────────────────                         ───────
+        │                                      │
+        │  POST /api/auth/register-paciente    │
+        │  { email, password, nombre,          │
+        │    apellido, dni, telefono,           │
+        │    fechaNacimiento }                  │
+        │─────────────────────────────────────►│
+        │                                      │  BEGIN TRANSACTION
+        │                                      │  1. Buscar Paciente por DNI
+        │                                      │     ├─ Existe + ya tiene UserId → Error "DNI ya vinculado"
+        │                                      │     ├─ Existe + sin UserId → Vincular (adopción)
+        │                                      │     └─ No existe → Crear entidad Paciente
+        │                                      │  2. Crear ApplicationUser (Identity)
+        │                                      │  3. Asignar rol "Paciente"
+        │                                      │  4. Vincular User ↔ Paciente (bidireccional)
+        │                                      │  5. COMMIT (todo o nada)
+        │                                      │
+        │  200 { success, message }            │
+        │◄─────────────────────────────────────│
+```
 
-Prioridad 1 — Funcionalidad rota en producción:
-El problema de los Includes faltantes hace que PacienteNombre y DoctorNombre sean siempre "No disponible". Esto es visible para cualquier usuario del sistema desde el primer día. SaveChangesAsync silenciando errores puede causar inconsistencias de datos invisibles. El registro público con rol Admin es un agujero de seguridad crítico.
+**Vinculación por DNI:** Si un dependiente (creado por su padre) luego se registra usando el mismo DNI, el sistema detecta el Paciente existente y simplemente vincula la cuenta nueva sin crear duplicado.
 
-Prioridad 2 — Correctitud del sistema:
-Sin transacciones en registro puede dejar usuarios huérfanos. UpdateAsync permite estados inválidos vía Admin. El 404 incorrecto en listas vacías rompe clientes que siguen convenciones REST.
+**Registro de Doctor:** Mismo patrón pero vincula por Matrícula. Solo ejecutable por Admin.
 
-Prioridad 3 — Completar funcionalidad conocida faltante:
-Endpoint GET /api/doctores/me (el método ya existe, solo falta el endpoint). Validación de especialidad en ConfirmarAsync. Índices de base de datos para performance.
+---
 
-Prioridad 4 — Deuda técnica a resolver antes de escalar:
-Interfaces para CurrentUserService y SeedDataService. Eliminar GetAllAsync sin paginación. Separar MotivoCancelacion de MotivoRechazo. Validación del parámetro ?estado.
+### 4.3 Flujo Completo de un Turno (Happy Path)
+
+```
+  Paciente                  Secretaria                   Doctor
+  ────────                  ──────────                   ──────
+     │                          │                           │
+     │  POST /api/turnos        │                           │
+     │  { pacienteId,           │                           │
+     │    especialidad,         │                           │
+     │    motivo }              │                           │
+     │─────────►                │                           │
+     │                          │                           │
+     │  Estado: SolicitudPendiente (sin fecha, sin doctor)  │
+     │                          │                           │
+     │                   GET /api/turnos/pendientes         │
+     │                   (bandeja de solicitudes)           │
+     │                          │                           │
+     │                   GET /api/horarios/doctor/{id}/     │
+     │                       disponibilidad?fecha=...       │
+     │                   (consulta slots libres)            │
+     │                          │                           │
+     │                   POST /api/turnos/{id}/confirmar    │
+     │                   { fechaHora, doctorId }            │
+     │                          │                           │
+     │  Estado: Confirmado (doctor + fecha asignados)       │
+     │                          │                           │
+     │                          │     GET /api/turnos/      │
+     │                          │     doctor/me/agenda      │
+     │                          │     ?fecha=2026-03-15     │
+     │                          │           │               │
+     │                          │     PATCH /api/turnos/{id}│
+     │                          │     { estado:"Completado",│
+     │                          │       observacionClinica } │
+     │                          │           │               │
+     │  Estado: Completado (con observación clínica)        │
+     │                                                      │
+     │  GET /api/turnos/paciente/{id}/historial             │
+     │  (turnos completados + observaciones)                │
+```
+
+---
+
+### 4.4 Flujo de Dependientes (Menores de Edad)
+
+```
+  Paciente (padre/madre)                    Backend
+  ──────────────────────                    ───────
+        │                                      │
+        │  POST /api/pacientes/dependientes    │
+        │  { dni, nombre, apellido,            │
+        │    fechaNacimiento }                  │
+        │─────────────────────────────────────►│
+        │                                      │  1. Validar DNI único
+        │                                      │  2. Crear Paciente:
+        │                                      │     ResponsableId = userId del padre
+        │                                      │     EsMayorDeEdad = false
+        │                                      │     UserId = null
+        │                                      │
+        │  201 { dependiente }                 │
+        │◄─────────────────────────────────────│
+        │                                      │
+        │  Operaciones disponibles:            │
+        │  · POST /turnos { pacienteId: hijo } │  → Autorizado por ResponsableId
+        │  · GET /turnos/paciente/{hijoId}     │  → Autorizado por ResponsableId
+        │  · GET /pacientes/mis-dependientes   │  → Lista todos los dependientes
+```
+
+**Emancipación automática:** Si el menor crece y se registra con `POST /register-paciente` usando su DNI, el sistema vincula la cuenta existente. A partir de ahí, su propio `UserId` toma precedencia sobre `ResponsableId` en las verificaciones de autorización.
+
+---
+
+### 4.5 Flujo de Disponibilidad de Horarios
+
+```
+  Secretaria                                Backend
+  ──────────                                ───────
+       │                                       │
+       │  GET /api/horarios/doctor/5/          │
+       │      disponibilidad?fecha=2026-03-17  │
+       │──────────────────────────────────────►│
+       │                                       │  1. DiaSemana de 2026-03-17 → Martes (2)
+       │                                       │  2. Buscar Horarios del doctor para día 2:
+       │                                       │     09:00-13:00 (30 min), 15:00-18:00 (30 min)
+       │                                       │  3. Buscar Turnos Confirmados para esa fecha:
+       │                                       │     09:30, 10:00, 15:00 ocupados
+       │                                       │  4. Generar slots, filtrar ocupados y pasados:
+       │                                       │     09:00 ✓, 10:30 ✓, 11:00 ✓, 15:30 ✓, ...
+       │                                       │
+       │  200 [                                │
+       │    { fechaHora: "2026-03-17T09:00",   │
+       │      doctorId: 5,                     │
+       │      doctorNombre: "Dr. López",       │
+       │      duracionMinutos: 30 },           │
+       │    ...                                │
+       │  ]                                    │
+       │◄──────────────────────────────────────│
+```
+
+---
+
+### 4.6 Reglas de Cancelación por Rol
+
+| Rol | Estado permitido | Validación adicional |
+|-----|-----------------|---------------------|
+| **Admin** | SolicitudPendiente, Confirmado | Ninguna (acceso total) |
+| **Secretaria** | SolicitudPendiente, Confirmado | Ninguna |
+| **Doctor** | Solo Confirmado | Debe estar asignado a ese turno |
+| **Paciente** | SolicitudPendiente, Confirmado | Debe ser propietario del turno o responsable del dependiente |
+
+---
+
+## 5. Catálogo de Endpoints
+
+### 5.1 Autenticación (`/api/auth`) — 5 endpoints
+
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| POST | `/register-paciente` | Anónimo | Auto-registro con vinculación por DNI |
+| POST | `/register-doctor` | Admin | Registro + vinculación por Matrícula |
+| POST | `/register-secretaria` | Admin | Registro de secretaria |
+| POST | `/login` | Anónimo (Rate: 5/min) | Login → JWT token |
+| GET | `/profile` | Autenticado | Claims del usuario actual |
+
+### 5.2 Turnos (`/api/turnos`) — 14 endpoints
+
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| GET | `/` | Admin, Secretaria | Paginado + filtro ?estado |
+| GET | `/{id}` | Autenticado | Detalle con control de acceso |
+| GET | `/paciente/{id}` | Todos | Turnos por paciente + ?estado |
+| GET | `/doctor/{id}` | Todos | Turnos por doctor + ?estado |
+| GET | `/me` | Paciente, Doctor | Mis turnos (ID resuelto automáticamente) |
+| GET | `/doctor/me/agenda?fecha=` | Doctor | Agenda confirmada del día |
+| GET | `/pendientes` | Secretaria, Admin | Solicitudes pendientes paginadas |
+| GET | `/paciente/{id}/historial` | Todos | Completados con observación clínica |
+| POST | `/` | Paciente, Secretaria, Admin | Crear solicitud |
+| POST | `/{id}/confirmar` | Secretaria, Admin | Asignar fecha + doctor → Confirmado |
+| POST | `/{id}/rechazar` | Secretaria, Admin | Rechazar con motivo → Rechazado |
+| POST | `/{id}/cancelar` | Todos | Cancelar con reglas por rol |
+| PATCH | `/{id}` | Doctor, Admin | Completado/Ausente + observación |
+| DELETE | `/{id}` | Admin | Eliminar |
+
+### 5.3 Doctores (`/api/doctores`) — 7 endpoints
+
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| GET | `/` | Admin | Paginado |
+| GET | `/me` | Doctor | Perfil propio |
+| GET | `/{id}` | Autenticado | Detalle |
+| GET | `/especialidad/{esp}` | Autenticado | Búsqueda por especialidad |
+| POST | `/` | Admin | Crear (sin cuenta usuario) |
+| PUT | `/{id}` | Admin | Actualizar |
+| DELETE | `/{id}` | Admin | Eliminar |
+
+### 5.4 Pacientes (`/api/pacientes`) — 8 endpoints
+
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| GET | `/` | Admin | Paginado |
+| GET | `/me` | Paciente | Perfil propio |
+| GET | `/{id}` | Autenticado | Detalle |
+| GET | `/mis-dependientes` | Paciente | Dependientes del responsable |
+| POST | `/` | Admin, Secretaria | Crear (sin cuenta usuario) |
+| POST | `/dependientes` | Paciente | Registrar menor dependiente |
+| PUT | `/{id}` | Admin | Actualizar |
+| DELETE | `/{id}` | Admin | Eliminar |
+
+### 5.5 Obras Sociales (`/api/obras-sociales`) — 5 endpoints
+
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| GET | `/` | Admin | Listar todas |
+| GET | `/{id}` | Autenticado | Detalle |
+| POST | `/` | Admin | Crear (nombre único) |
+| PUT | `/{id}` | Admin | Actualizar |
+| DELETE | `/{id}` | Admin | Eliminar |
+
+### 5.6 Horarios (`/api/horarios`) — 4 endpoints
+
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| GET | `/doctor/{id}` | Autenticado | Horarios semanales |
+| GET | `/doctor/{id}/disponibilidad?fecha=` | Admin, Secretaria, Paciente | Slots libres |
+| POST | `/` | Admin | Crear bloque (con detección de overlap) |
+| DELETE | `/{id}` | Admin | Eliminar bloque |
+
+**Total: 43 endpoints funcionales.**
+
+---
+
+## 6. Estado de Calidad — Issues Pendientes
+
+### 6.1 Resueltos en Fase 1 + Fase 2 ✓
+
+| # | Issue original | Resolución |
+|---|----------------|------------|
+| C1 | Sin transacciones en registro | `IDbContextTransaction` con rollback automático |
+| C2 | Admin puede inyectar cualquier estado vía PATCH | Whitelist validada antes del branch Admin |
+| C3 | register-paciente / register-doctor no expuestos | Endpoints creados en AuthController |
+| A1 | Especialidad no validada al confirmar | Doctor.Especialidad comparada con Turno.Especialidad |
+| A2 | 404 en lista vacía de turnos | Retorna 200 con array vacío |
+| A3 | ?estado no validado en query string | `ValidarEstado()` contra `EstadoTurno.Todos` |
+| A4 | Sin índices en columnas filtradas | 7 índices nuevos en migración Fase2 |
+
+### 6.2 Issues Abiertos
+
+| Sev | Issue | Ubicación | Impacto |
+|-----|-------|-----------|---------|
+| **ALTO** | ObrasSociales solo accesible para Admin | ObrasSocialesController | Secretaria no puede verificar cobertura |
+| **ALTO** | `PacienteReadDto.ObraSocial` siempre null | Repository genérico sin Include | Frontend no puede mostrar OS del paciente |
+| **MEDIO** | `MotivoRechazo` reutilizado para cancelaciones | Turno entity | Un campo para dos conceptos |
+| **MEDIO** | CurrentUserService y SeedDataService sin interfaz | DI | Bloquea testing unitario |
+| **MEDIO** | JWT usa `user.Rol` en vez de `GetRolesAsync` | AuthService | JWT desincronizado si se cambia rol vía Identity |
+| **MEDIO** | `GetAllAsync` sin paginación en Doctor y OS | Services | No escalable |
+| **MEDIO** | `DateTime` vs `DateTimeOffset` en FechaHora | ConfirmarTurnoDto | Errores de timezone posibles |
+| **BAJO** | Password admin hardcodeado | SeedDataService | Visible en repo |
+| **BAJO** | RegisterRequestDto legacy sin uso activo | AuthDTOs | Código muerto |
+| **BAJO** | `TurnoService.GetAllAsync` nunca invocado | TurnoService | Método muerto en interfaz |
+
+---
+
+## 7. Análisis de Seguridad
+
+### 7.1 Controles Implementados ✓
+
+| Control | Implementación |
+|---------|---------------|
+| Autenticación | JWT con HMAC-SHA256, ClockSkew = Zero |
+| Autorización | `[Authorize(Roles)]` + verificación en service layer |
+| Rate Limiting | Login: 5 intentos/minuto por IP |
+| CORS | Orígenes específicos: localhost:5173, localhost:3000 |
+| Registro restringido | Solo Paciente puede auto-registrarse |
+| Estado inmutable | Estado, CreatedAt, CreatedByUserId inyectados server-side |
+| Concurrencia | RowVersion en Turno (optimistic locking) |
+| Transacciones | Registro usa IDbContextTransaction |
+| Validación de entrada | DataAnnotations en DTOs + validación de negocio |
+| User Secrets | Configurado para desarrollo |
+
+### 7.2 Pendientes de Implementar
+
+| Prioridad | Control | Recomendación |
+|-----------|---------|---------------|
+| ALTA | Rate limiting solo en login | Extender a endpoints de escritura |
+| ALTA | Sin validación de JWT SecretKey al startup | Verificar >= 32 bytes, fallar si no cumple |
+| MEDIA | JWT no se invalida al cambiar rol | Tokens cortos (15 min) + Refresh token |
+| MEDIA | CORS hardcodeado para dev | Configurar por ambiente en appsettings |
+| BAJA | Sin audit log de acciones admin | Tabla de auditoría con actor, acción, timestamp |
+
+---
+
+## 8. Evaluación MVP — Readiness para Frontend
+
+### 8.1 Operatividad por Rol
+
+| Rol | Estado | Detalle |
+|-----|--------|---------|
+| **Paciente** | 🟢 95% | Registrarse, solicitar turnos, ver sus turnos, registrar dependientes, ver historial. Falta: ver su ObraSocial en el perfil (siempre null). |
+| **Doctor** | 🟢 100% | Ver perfil, consultar agenda del día, completar/marcar ausente, ver historial del paciente. |
+| **Secretaria** | 🟡 85% | Ver pendientes, confirmar/rechazar, cancelar, ver disponibilidad. Falta: consultar obras sociales (solo Admin). |
+| **Admin** | 🟢 100% | CRUD completo de todas las entidades, gestión de horarios, registro de doctores y secretarias. |
+
+### 8.2 Contrato API para el Frontend
+
+**Autenticación:** JWT en header `Authorization: Bearer <token>`. Claims: `sub` (userId), `email`, `name`, `role`.
+
+**Formato de errores consistente:**
+```json
+{
+  "statusCode": 400,
+  "message": "El paciente con ID 5 no existe.",
+  "detail": null,
+  "timestamp": "2026-03-10T12:00:00Z"
+}
+```
+
+**Paginación estándar:** `?page=1&pageSize=20` →
+```json
+{
+  "items": [...],
+  "total": 150,
+  "page": 1,
+  "pageSize": 20,
+  "totalPages": 8,
+  "hasPreviousPage": false,
+  "hasNextPage": true
+}
+```
+
+**Filtrado por estado:** `?estado=Confirmado` — validado contra 6 valores: `SolicitudPendiente`, `Confirmado`, `Rechazado`, `Completado`, `Ausente`, `Cancelado`.
+
+**CORS:** `localhost:5173` (Vite) y `localhost:3000` (CRA).
+
+### 8.3 Pantallas Sugeridas para el Frontend MVP
+
+| # | Pantalla | Rol | Endpoints principales |
+|---|----------|-----|-----------------------|
+| 1 | **Login** | Todos | `POST /auth/login` |
+| 2 | **Registro** | Anónimo | `POST /auth/register-paciente` |
+| 3 | **Mis Turnos** | Paciente | `GET /turnos/me`, `POST /turnos/{id}/cancelar` |
+| 4 | **Solicitar Turno** | Paciente | `GET /doctores/especialidad/{e}`, `GET /horarios/.../disponibilidad`, `POST /turnos` |
+| 5 | **Mis Dependientes** | Paciente | `GET /pacientes/mis-dependientes`, `POST /pacientes/dependientes` |
+| 6 | **Agenda del Día** | Doctor | `GET /turnos/doctor/me/agenda?fecha=`, `PATCH /turnos/{id}` |
+| 7 | **Historial Paciente** | Doctor | `GET /turnos/paciente/{id}/historial` |
+| 8 | **Dashboard Pendientes** | Secretaria | `GET /turnos/pendientes`, `POST .../confirmar`, `POST .../rechazar` |
+| 9 | **Panel Admin** | Admin | CRUD doctores, pacientes, obras sociales, horarios |
+
+**Con estas 9 pantallas y los 43 endpoints existentes se cubre el 100% del flujo operativo de un consultorio.**
+
+### 8.4 Conclusión de Readiness
+
+El backend está **listo para conectar con un frontend MVP**. Los flujos críticos (registro, login, solicitud de turno, gestión por secretaria, agenda del doctor, completar turno) están completos e integrados.
+
+Los 2 issues marcados como ALTO (ObraSocial null + acceso restringido) son mejoras de UX, no bloquean el flujo core. Un frontend puede arrancar con las 9 pantallas propuestas sin necesidad de cambios adicionales en el backend.
+
+Para una demo profesional, se recomienda resolver los 2 issues ALTO (son cambios menores) y agregar documentación Swagger con ejemplos.
+
+---
+
+## 9. Roadmap — Fases Siguientes
+
+### FASE 3: Pre-Producción
+
+| Tarea | Prioridad |
+|-------|-----------|
+| Abrir lectura de ObrasSociales a Secretaria/Paciente | Alta |
+| Resolver PacienteReadDto.ObraSocial null (PacienteRepository con Include) | Alta |
+| Swagger/OpenAPI documentado con XML comments y ejemplos | Alta |
+| Health checks (`/health` con validación de BD) | Media |
+| Docker multi-stage + docker-compose con PostgreSQL | Media |
+| Logging estructurado (Serilog) con correlation IDs | Media |
+| Interfaces para CurrentUserService y SeedDataService | Media |
+| Separar MotivoCancelacion de MotivoRechazo | Media |
+| Tests unitarios de la máquina de estados | Media |
+| CORS configurado por ambiente (appsettings) | Baja |
+
+### FASE 4: Features Avanzadas
+
+| Feature | Valor |
+|---------|-------|
+| Notificaciones email (confirmar/rechazar/cancelar) | Reduce no-shows |
+| Reprogramación de turnos (`POST .../reprogramar`) | UX mejorado |
+| Recordatorios automáticos (24h y 2h) | BackgroundService |
+| Reportes (% ausentismo, turnos/especialidad) | Métricas de negocio |
+| Refresh Token (JWT 15 min + refresh 7 días) | Seguridad |
+| Audit Trail (tabla de auditoría) | Compliance médico |
+| Multi-sucursal (modelo Sucursal) | Escalabilidad |
+
+---
+
+## 10. Métricas
+
+| Métrica | Valor |
+|---------|-------|
+| Archivos .cs | ~45 |
+| Entidades | 8 |
+| DTOs | 22 |
+| Endpoints | 43 |
+| Servicios | 8 (6 con interfaz) |
+| Repositorios | 2 |
+| Migraciones | 9 |
+| Índices de BD | 9 |
+| Tests | 0 |
+| Docker | No |
+| CI/CD | No |
+
+---
+
+## 11. Historial de Cambios
+
+| Revisión | Fecha | Cambios |
+|----------|-------|---------|
+| Rev 1-3 | Feb 2026 | Análisis inicial, modelo de datos, primeros bugs |
+| Rev 4 | 10/03/2026 | Análisis integral: inventario completo, roadmap 4 fases, bugs C1-C3/A1-A5/M1-M6, análisis de seguridad |
+| Rev 5 | 10/03/2026 | **Post Fase 1 + Fase 2.** 7 bugs resueltos. +10 endpoints nuevos (me, agenda, pendientes, historial, horarios, dependientes). Definición de 6 flujos de negocio. Evaluación MVP con readiness por rol. Catálogo completo de 43 endpoints. Reescritura completa del documento. |

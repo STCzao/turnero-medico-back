@@ -62,15 +62,8 @@ namespace turnero_medico_backend.Repositories
 
         public async Task<bool> SaveChangesAsync()
         {
-            try
-            {
-                await _context.SaveChangesAsync();
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
+            await _context.SaveChangesAsync();
+            return true;
         }
     }
 }

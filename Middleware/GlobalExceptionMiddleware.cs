@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 
 namespace turnero_medico_backend.Middleware
 {
@@ -31,6 +32,22 @@ namespace turnero_medico_backend.Middleware
             switch (exception)
             {
                 // Excepciones específicas que reconocemos
+                case DbUpdateConcurrencyException:
+                    // Conflicto de concurrencia optimista (RowVersion): otro proceso modificó el registro primero.
+                    context.Response.StatusCode = StatusCodes.Status409Conflict;
+                    response.StatusCode = HttpStatusCode.Conflict;
+                    response.Message = "Conflicto de concurrencia";
+                    response.Detail = "El recurso fue modificado por otro proceso. Reintente la operación.";
+                    break;
+
+                case DbUpdateException:
+                    // Error de base de datos: violación de FK (eliminar entidad con dependencias), unique constraint, etc.
+                    context.Response.StatusCode = StatusCodes.Status409Conflict;
+                    response.StatusCode = HttpStatusCode.Conflict;
+                    response.Message = "Conflicto de integridad";
+                    response.Detail = "No se puede completar la operación porque el recurso tiene datos asociados o violaría una restricción única.";
+                    break;
+
                 case ArgumentNullException:
                     context.Response.StatusCode = StatusCodes.Status400BadRequest;
                     response.StatusCode = HttpStatusCode.BadRequest;
@@ -46,9 +63,11 @@ namespace turnero_medico_backend.Middleware
                     break;
 
                 case UnauthorizedAccessException:
-                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                    response.StatusCode = HttpStatusCode.Unauthorized;
-                    response.Message = "No autorizado";
+                    // 403 Forbidden: el usuario está autenticado pero no tiene permiso.
+                    // 401 Unauthorized se reserva para peticiones sin credenciales válidas (lo maneja el middleware de JWT).
+                    context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    response.StatusCode = HttpStatusCode.Forbidden;
+                    response.Message = "Acceso denegado";
                     response.Detail = exception.Message;
                     break;
 

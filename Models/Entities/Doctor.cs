@@ -22,5 +22,8 @@ namespace turnero_medico_backend.Models.Entities
         
         // Relación: Un doctor puede tener muchos turnos
         public ICollection<Turno> Turnos { get; set; } = new List<Turno>();
+
+        // Relación: Horarios de atención configurados
+        public ICollection<Horario> Horarios { get; set; } = new List<Horario>();
     }
 }

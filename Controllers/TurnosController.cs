@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using turnero_medico_backend.DTOs.Common;
 using turnero_medico_backend.DTOs.TurnoDTOs;
+using turnero_medico_backend.Models.Entities;
 using turnero_medico_backend.Services.Interfaces;
 
 namespace turnero_medico_backend.Controllers
@@ -19,6 +20,9 @@ namespace turnero_medico_backend.Controllers
             [FromQuery] int pageSize = 20,
             [FromQuery] string? estado = null)
         {
+            if (!ValidarEstado(estado, out var errorResult))
+                return errorResult!;
+
             var turnos = await _service.GetAllPagedAsync(page, pageSize, estado);
             return Ok(turnos);
         }
@@ -28,10 +32,10 @@ namespace turnero_medico_backend.Controllers
             int pacienteId,
             [FromQuery] string? estado = null)
         {
-            var turnos = await _service.GetByPacienteAsync(pacienteId, estado);
-            if (!turnos.Any())
-                return NotFound(new { mensaje = $"El paciente {pacienteId} no tiene turnos registrados" });
+            if (!ValidarEstado(estado, out var errorResult))
+                return errorResult!;
 
+            var turnos = await _service.GetByPacienteAsync(pacienteId, estado);
             return Ok(turnos);
         }
 
@@ -40,10 +44,10 @@ namespace turnero_medico_backend.Controllers
             int doctorId,
             [FromQuery] string? estado = null)
         {
-            var turnos = await _service.GetByDoctorAsync(doctorId, estado);
-            if (!turnos.Any())
-                return NotFound(new { mensaje = $"El doctor {doctorId} no tiene turnos registrados" });
+            if (!ValidarEstado(estado, out var errorResult))
+                return errorResult!;
 
+            var turnos = await _service.GetByDoctorAsync(doctorId, estado);
             return Ok(turnos);
         }
 
@@ -140,6 +144,64 @@ namespace turnero_medico_backend.Controllers
                 return NotFound(new { mensaje = $"Turno con ID {id} no encontrado" });
 
             return NoContent();
+        }
+
+        // Mis turnos — el paciente/doctor autenticado ve sus turnos sin conocer su ID numérico
+        [HttpGet("me")]
+        [Authorize(Roles = "Paciente,Doctor")]
+        public async Task<ActionResult<IEnumerable<TurnoReadDto>>> GetMyTurnos([FromQuery] string? estado = null)
+        {
+            if (!ValidarEstado(estado, out var errorResult))
+                return errorResult!;
+
+            var turnos = await _service.GetMyTurnosAsync(estado);
+            return Ok(turnos);
+        }
+
+        // Agenda del doctor autenticado para una fecha
+        [HttpGet("doctor/me/agenda")]
+        [Authorize(Roles = "Doctor")]
+        public async Task<ActionResult<IEnumerable<TurnoReadDto>>> GetMyAgenda([FromQuery] DateTime fecha)
+        {
+            var turnos = await _service.GetMyAgendaAsync(fecha);
+            return Ok(turnos);
+        }
+
+        // Turnos pendientes de gestión — Secretaria/Admin
+        [HttpGet("pendientes")]
+        [Authorize(Roles = "Secretaria,Admin")]
+        public async Task<ActionResult<PagedResultDto<TurnoReadDto>>> GetPendientes(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20)
+        {
+            var turnos = await _service.GetPendientesAsync(page, pageSize);
+            return Ok(turnos);
+        }
+
+        // Historial clínico — turnos completados de un paciente
+        [HttpGet("paciente/{pacienteId}/historial")]
+        public async Task<ActionResult<IEnumerable<TurnoReadDto>>> GetHistorial(int pacienteId)
+        {
+            var turnos = await _service.GetHistorialAsync(pacienteId);
+            return Ok(turnos);
+        }
+
+        // Helper: valida que el parámetro ?estado sea uno de los 6 valores válidos
+        private static bool ValidarEstado(string? estado, out ActionResult? errorResult)
+        {
+            errorResult = null;
+            if (estado == null) return true;
+
+            if (!EstadoTurno.Todos.Contains(estado))
+            {
+                errorResult = new BadRequestObjectResult(new
+                {
+                    mensaje = $"Estado '{estado}' no es válido.",
+                    estadosValidos = EstadoTurno.Todos
+                });
+                return false;
+            }
+            return true;
         }
     }
 }
