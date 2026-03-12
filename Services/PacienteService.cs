@@ -95,5 +95,46 @@ namespace turnero_medico_backend.Services
             var paciente = await _repository.GetByIdAsync(id);
             return paciente != null;
         }
+
+        // ─────────────────────────────────────────────────────────────
+        // DEPENDIENTES
+        // ─────────────────────────────────────────────────────────────
+
+        public async Task<IEnumerable<PacienteReadDto>> GetMisDependientesAsync()
+        {
+            var userId = _currentUserService.GetUserId();
+            if (string.IsNullOrEmpty(userId))
+                throw new UnauthorizedAccessException("No se pudo obtener el ID del usuario autenticado.");
+
+            var dependientes = await _repository.FindAsync(p => p.ResponsableId == userId);
+            return _mapper.Map<IEnumerable<PacienteReadDto>>(dependientes);
+        }
+
+        public async Task<PacienteReadDto> CreateDependienteAsync(DependienteCreateDto dto)
+        {
+            var userId = _currentUserService.GetUserId();
+            if (string.IsNullOrEmpty(userId))
+                throw new UnauthorizedAccessException("No se pudo obtener el ID del usuario autenticado.");
+
+            // Verificar que no exista un paciente con el mismo DNI
+            var existentes = await _repository.FindAsync(p => p.Dni == dto.Dni);
+            if (existentes.Any())
+                throw new InvalidOperationException($"Ya existe un paciente con DNI {dto.Dni}.");
+
+            var dependiente = new Paciente
+            {
+                Dni = dto.Dni,
+                Nombre = dto.Nombre,
+                Apellido = dto.Apellido,
+                FechaNacimiento = dto.FechaNacimiento,
+                Telefono = dto.Telefono ?? string.Empty,
+                ResponsableId = userId,
+                EsMayorDeEdad = false,
+                UserId = null // Los dependientes no tienen cuenta de usuario
+            };
+
+            var creado = await _repository.AddAsync(dependiente);
+            return _mapper.Map<PacienteReadDto>(creado);
+        }
     }
 }

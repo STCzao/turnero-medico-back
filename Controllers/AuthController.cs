@@ -12,19 +12,71 @@ namespace turnero_medico_backend.Controllers
     {
         private readonly IAuthService _authService = authService;
 
-        [HttpPost("register")]
+        // Auto-registro público de pacientes.
+        // Vinculación por DNI: si ya existe un Paciente con ese DNI (dependiente),
+        // se vincula a la cuenta nueva en vez de crear otro registro.
+        [HttpPost("register-paciente")]
         [AllowAnonymous]
-        public async Task<IActionResult> Register([FromBody] RegisterRequestDto request)
+        public async Task<IActionResult> RegisterPaciente([FromBody] RegisterPacienteDto request)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var (success, message) = await _authService.RegisterAsync(
+            var (success, message) = await _authService.RegisterPacienteAsync(
                 request.Email,
                 request.Password,
                 request.Nombre,
                 request.Apellido,
-                request.Rol
+                request.Dni,
+                request.Telefono,
+                request.FechaNacimiento
+            );
+
+            if (!success)
+                return BadRequest(new { message });
+
+            return Ok(new { message });
+        }
+
+        // Registro de doctor — exclusivo para Admin.
+        // Vinculación por Matrícula: si ya existe un Doctor con esa matrícula (creado vía CRUD),
+        // se vincula a la cuenta nueva.
+        [HttpPost("register-doctor")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> RegisterDoctor([FromBody] RegisterDoctorDto request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var (success, message) = await _authService.RegisterDoctorAsync(
+                request.Email,
+                request.Password,
+                request.Nombre,
+                request.Apellido,
+                request.Matricula,
+                request.Especialidad,
+                request.Telefono
+            );
+
+            if (!success)
+                return BadRequest(new { message });
+
+            return Ok(new { message });
+        }
+
+        // Registro de secretaria — exclusivo para Admin.
+        [HttpPost("register-secretaria")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> RegisterSecretaria([FromBody] RegisterSecretariaDto request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var (success, message) = await _authService.RegisterSecretariaAsync(
+                request.Email,
+                request.Password,
+                request.Nombre,
+                request.Apellido
             );
 
             if (!success)

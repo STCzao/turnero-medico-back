@@ -47,7 +47,10 @@ namespace turnero_medico_backend.Controllers
             return Ok(paciente);
         }
 
+        // Creación directa de un registro de paciente (sin cuenta de usuario).
+        // Solo Admin y Secretaria pueden hacerlo. El auto-registro con cuenta va por /api/auth/register-paciente.
         [HttpPost]
+        [Authorize(Roles = "Admin,Secretaria")]
         public async Task<ActionResult<PacienteReadDto>> Create(PacienteCreateDto dto)
         {
             if (!ModelState.IsValid)
@@ -59,6 +62,7 @@ namespace turnero_medico_backend.Controllers
 
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<PacienteReadDto>> Update(int id, PacienteUpdateDto dto)
         {
             if (!ModelState.IsValid)
@@ -76,6 +80,7 @@ namespace turnero_medico_backend.Controllers
 
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult> Delete(int id)
         {
             var result = await _service.DeleteAsync(id);
@@ -83,6 +88,27 @@ namespace turnero_medico_backend.Controllers
                 return NotFound(new { mensaje = $"Paciente con ID {id} no encontrado" });
 
             return NoContent();
+        }
+
+        // Dependientes del paciente autenticado
+        [HttpGet("mis-dependientes")]
+        [Authorize(Roles = "Paciente")]
+        public async Task<ActionResult<IEnumerable<PacienteReadDto>>> GetMisDependientes()
+        {
+            var dependientes = await _service.GetMisDependientesAsync();
+            return Ok(dependientes);
+        }
+
+        // Registrar un dependiente (menor sin cuenta de usuario)
+        [HttpPost("dependientes")]
+        [Authorize(Roles = "Paciente")]
+        public async Task<ActionResult<PacienteReadDto>> CreateDependiente(DependienteCreateDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var dependiente = await _service.CreateDependienteAsync(dto);
+            return CreatedAtAction(nameof(GetById), new { id = dependiente.Id }, dependiente);
         }
     }
 }

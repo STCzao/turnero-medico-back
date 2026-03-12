@@ -15,6 +15,7 @@ namespace turnero_medico_backend.Data
         public DbSet<Doctor> Doctores { get; set; }
         public DbSet<Turno> Turnos { get; set; }
         public DbSet<ObraSocial> ObrasSociales { get; set; }
+        public DbSet<Horario> Horarios { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -73,6 +74,35 @@ namespace turnero_medico_backend.Data
             modelBuilder.Entity<Doctor>()
             .HasIndex(d => d.Matricula)
             .IsUnique();
+
+            // Relación: Horario-Doctor (Muchos-a-Uno)
+            modelBuilder.Entity<Horario>()
+                .HasOne(h => h.Doctor)
+                .WithMany(d => d.Horarios)
+                .HasForeignKey(h => h.DoctorId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Índices para queries frecuentes
+            modelBuilder.Entity<Turno>()
+                .HasIndex(t => t.Estado);
+
+            modelBuilder.Entity<Turno>()
+                .HasIndex(t => t.PacienteId);
+
+            modelBuilder.Entity<Turno>()
+                .HasIndex(t => t.DoctorId);
+
+            modelBuilder.Entity<Doctor>()
+                .HasIndex(d => d.UserId);
+
+            modelBuilder.Entity<Paciente>()
+                .HasIndex(p => p.UserId);
+
+            modelBuilder.Entity<Paciente>()
+                .HasIndex(p => p.ResponsableId);
+
+            modelBuilder.Entity<Horario>()
+                .HasIndex(h => new { h.DoctorId, h.DiaSemana });
         }
     }
 }

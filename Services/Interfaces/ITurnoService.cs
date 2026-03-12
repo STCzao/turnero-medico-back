@@ -21,5 +21,17 @@ namespace turnero_medico_backend.Services.Interfaces
 
         // Cancelación — Paciente, Doctor, Secretaria y Admin con reglas propias
         Task<TurnoReadDto?> CancelarAsync(int turnoId, CancelarTurnoDto dto);
+
+        // Mis turnos — resuelve automáticamente el ID según rol del usuario autenticado
+        Task<IEnumerable<TurnoReadDto>> GetMyTurnosAsync(string? estado = null);
+
+        // Agenda del doctor autenticado para una fecha
+        Task<IEnumerable<TurnoReadDto>> GetMyAgendaAsync(DateTime fecha);
+
+        // Turnos pendientes de gestión — solo Secretaria/Admin
+        Task<PagedResultDto<TurnoReadDto>> GetPendientesAsync(int page, int pageSize);
+
+        // Historial clínico — turnos completados de un paciente
+        Task<IEnumerable<TurnoReadDto>> GetHistorialAsync(int pacienteId);
     }
 }

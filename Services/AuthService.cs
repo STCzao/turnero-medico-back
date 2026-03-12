@@ -3,6 +3,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using turnero_medico_backend.Data;
 using turnero_medico_backend.Models.Entities;
 using turnero_medico_backend.Repositories.Interfaces;
 using turnero_medico_backend.Services.Interfaces;
@@ -14,86 +15,21 @@ namespace turnero_medico_backend.Services
         RoleManager<ApplicationRole> roleManager,
         IConfiguration configuration,
         IRepository<Paciente> pacienteRepository,
-        IRepository<Doctor> doctorRepository) : IAuthService
+        IRepository<Doctor> doctorRepository,
+        ApplicationDbContext dbContext) : IAuthService
     {
         private readonly UserManager<ApplicationUser> _userManager = userManager;
         private readonly RoleManager<ApplicationRole> _roleManager = roleManager;
         private readonly IConfiguration _configuration = configuration;
         private readonly IRepository<Paciente> _pacienteRepository = pacienteRepository;
         private readonly IRepository<Doctor> _doctorRepository = doctorRepository;
+        private readonly ApplicationDbContext _dbContext = dbContext;
 
-        /// Registra un nuevo usuario en el sistema
-
-        public async Task<(bool Success, string Message)> RegisterAsync(string email, string password, string nombre, string apellido, string rol)
-        {
-            try
-            {
-                // Verificar si el usuario ya existe
-                var userExists = await _userManager.FindByEmailAsync(email);
-                if (userExists != null)
-                    return (false, "El usuario ya está registrado");
-
-                // Validar rol
-                var rolesValidos = new[] { "Paciente", "Doctor", "Admin" };
-                if (!rolesValidos.Contains(rol))
-                    return (false, "Rol inválido");
-
-                // Crear nuevo usuario
-                var newUser = new ApplicationUser
-                {
-                    Email = email,
-                    UserName = email,
-                    Nombre = nombre,
-                    Apellido = apellido,
-                    Rol = rol,
-                    FechaRegistro = DateTime.UtcNow
-                };
-
-                // Intentar crear el usuario con la contraseña
-                var result = await _userManager.CreateAsync(newUser, password);
-                if (!result.Succeeded)
-                {
-                    var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                    return (false, $"Error al crear el usuario: {errors}");
-                }
-
-                // Asignar rol
-                var roleExists = await _roleManager.RoleExistsAsync(rol);
-                if (!roleExists)
-                {
-                    // Crear el rol si no existe
-                    await _roleManager.CreateAsync(new ApplicationRole(rol) { Descripcion = $"Rol de {rol}" });
-                }
-
-                await _userManager.AddToRoleAsync(newUser, rol);
-
-                // Auto-liberar ResponsableId si es transición a autonomía
-                // Si alguien se registra y tiene un Paciente con ResponsableId, significa que era un dependiente que ahora se está volviendo autónomo
-                if (rol == "Paciente")
-                {
-                    var pacienteExistente = await _pacienteRepository.FindAsync(p => p.Email == email);
-                    if (pacienteExistente.Any())
-                    {
-                        var paciente = pacienteExistente.First();
-                        // Si el paciente tenía un responsable, ahora es autónomo
-                        if (paciente.ResponsableId != null)
-                        {
-                            paciente.ResponsableId = null;  // Liberar responsable
-                            await _pacienteRepository.UpdateAsync(paciente);
-                        }
-                    }
-                }
-
-                return (true, "Usuario registrado exitosamente");
-            }
-            catch (Exception ex)
-            {
-                return (false, $"Error: {ex.Message}");
-            }
-        }
-
-        // Registra un nuevo paciente - Crea el usuario Y el registro en tabla Pacientes
-        // Auto-registro público
+        // ─────────────────────────────────────────────────────────────
+        // REGISTRO PACIENTE (auto-registro público)
+        // Vinculación por DNI: si ya existe un registro de Paciente con ese DNI
+        // (creado por secretaria como dependiente), se vincula en vez de crear uno nuevo.
+        // ─────────────────────────────────────────────────────────────
         public async Task<(bool Success, string Message)> RegisterPacienteAsync(
             string email,
             string password,
@@ -103,23 +39,28 @@ namespace turnero_medico_backend.Services
             string telefono,
             DateTime fechaNacimiento)
         {
+            // Verificar si el email ya tiene cuenta
+            var userExists = await _userManager.FindByEmailAsync(email);
+            if (userExists != null)
+                return (false, "El email ya está registrado como usuario");
+
+            // Buscar si ya existe un Paciente con este DNI (dependiente o creado por secretaria)
+            var pacientesConDni = await _pacienteRepository.FindAsync(p => p.Dni == dni);
+            var pacienteExistente = pacientesConDni.FirstOrDefault();
+
+            // Si el paciente ya existe Y ya tiene cuenta vinculada, rechazar
+            if (pacienteExistente != null && !string.IsNullOrEmpty(pacienteExistente.UserId))
+                return (false, "El DNI ya está vinculado a una cuenta de usuario");
+
+            // Calcular si es mayor de edad
+            var edad = DateTime.UtcNow.Year - fechaNacimiento.Year;
+            if (fechaNacimiento > DateTime.UtcNow.AddYears(-edad)) edad--;
+            var esMayorDeEdad = edad >= 18;
+
+            // --- Todo dentro de una transacción ---
+            await using var transaction = await _dbContext.Database.BeginTransactionAsync();
             try
             {
-                // Verificar si el usuario ya existe
-                var userExists = await _userManager.FindByEmailAsync(email);
-                if (userExists != null)
-                    return (false, "El usuario ya está registrado");
-
-                // Verificar si el DNI ya existe
-                var pacienteExistente = await _pacienteRepository.FindAsync(p => p.Dni == dni);
-                if (pacienteExistente.Any())
-                    return (false, "El DNI ya está registrado");
-
-                // Calcular si es mayor de edad
-                var edad = DateTime.UtcNow.Year - fechaNacimiento.Year;
-                if (fechaNacimiento > DateTime.UtcNow.AddYears(-edad)) edad--;
-                var esMayorDeEdad = edad >= 18;
-
                 // 1. Crear el usuario en AspNetUsers
                 var newUser = new ApplicationUser
                 {
@@ -134,53 +75,66 @@ namespace turnero_medico_backend.Services
                 var result = await _userManager.CreateAsync(newUser, password);
                 if (!result.Succeeded)
                 {
+                    await transaction.RollbackAsync();
                     var errors = string.Join(", ", result.Errors.Select(e => e.Description));
                     return (false, $"Error al crear el usuario: {errors}");
                 }
 
                 // 2. Asignar rol Paciente
-                var roleExists = await _roleManager.RoleExistsAsync("Paciente");
-                if (!roleExists)
-                {
-                    await _roleManager.CreateAsync(new ApplicationRole("Paciente") { Descripcion = "Rol de Paciente" });
-                }
-
+                await EnsureRoleExistsAsync("Paciente");
                 await _userManager.AddToRoleAsync(newUser, "Paciente");
 
-                // 3. Crear el registro en la tabla Pacientes
-                var paciente = new Paciente
+                // 3. Vincular o crear Paciente
+                if (pacienteExistente != null)
                 {
-                    Dni = dni,
-                    Nombre = nombre,
-                    Apellido = apellido,
-                    Email = email,
-                    Telefono = telefono,
-                    FechaNacimiento = fechaNacimiento,
-                    EsMayorDeEdad = esMayorDeEdad,
-                    TipoPago = TipoPago.SinCobertura,  // Por defecto sin cobertura
-                    NumeroAfiliado = string.Empty,
-                    UserId = newUser.Id  // ← vincular entidad con cuenta de usuario
-                };
+                    // Paciente ya existía (dependiente/creado por secretaria) → vincular por DNI
+                    pacienteExistente.UserId = newUser.Id;
+                    pacienteExistente.Email = email;
+                    pacienteExistente.Telefono = telefono;
+                    pacienteExistente.ResponsableId = null; // Ahora es autónomo
+                    await _pacienteRepository.UpdateAsync(pacienteExistente);
 
-                var createdPaciente = await _pacienteRepository.AddAsync(paciente);
+                    newUser.PacienteId = pacienteExistente.Id;
+                }
+                else
+                {
+                    // Paciente nuevo → crear registro
+                    var paciente = new Paciente
+                    {
+                        Dni = dni,
+                        Nombre = nombre,
+                        Apellido = apellido,
+                        Email = email,
+                        Telefono = telefono,
+                        FechaNacimiento = fechaNacimiento,
+                        EsMayorDeEdad = esMayorDeEdad,
+                        TipoPago = TipoPago.SinCobertura,
+                        NumeroAfiliado = string.Empty,
+                        UserId = newUser.Id
+                    };
+
+                    var createdPaciente = await _pacienteRepository.AddAsync(paciente);
+                    newUser.PacienteId = createdPaciente.Id;
+                }
 
                 // 4. Actualizar PacienteId en el usuario para navegación inversa
-                newUser.PacienteId = createdPaciente.Id;
                 await _userManager.UpdateAsync(newUser);
 
+                await transaction.CommitAsync();
                 return (true, "Paciente registrado exitosamente. Ya puedes agendar turnos.");
             }
-            catch (Exception ex)
+            catch
             {
-                // TODO: Si falla la creación del paciente, deberíamos hacer rollback del usuario
-                return (false, $"Error: {ex.Message}");
+                await transaction.RollbackAsync();
+                throw;
             }
         }
 
-        /// 
-        /// Registra un doctor - Crea el usuario Y el registro en tabla Doctores
-        /// SOLO puede ser llamado por Admin
-        /// 
+        // ─────────────────────────────────────────────────────────────
+        // REGISTRO DOCTOR (solo Admin)
+        // Vinculación por Matrícula: si ya existe un Doctor con esa matrícula
+        // (creado previamente vía CRUD), se vincula a la cuenta nueva.
+        // ─────────────────────────────────────────────────────────────
         public async Task<(bool Success, string Message)> RegisterDoctorAsync(
             string email, 
             string password, 
@@ -190,18 +144,23 @@ namespace turnero_medico_backend.Services
             string especialidad, 
             string telefono)
         {
+            // Verificar si el email ya tiene cuenta
+            var userExists = await _userManager.FindByEmailAsync(email);
+            if (userExists != null)
+                return (false, "El email ya está registrado como usuario");
+
+            // Buscar si ya existe un Doctor con esta matrícula
+            var doctoresConMatricula = await _doctorRepository.FindAsync(d => d.Matricula == matricula);
+            var doctorExistente = doctoresConMatricula.FirstOrDefault();
+
+            // Si el doctor ya existe Y ya tiene cuenta vinculada, rechazar
+            if (doctorExistente != null && !string.IsNullOrEmpty(doctorExistente.UserId))
+                return (false, "La matrícula ya está vinculada a una cuenta de usuario");
+
+            // --- Todo dentro de una transacción ---
+            await using var transaction = await _dbContext.Database.BeginTransactionAsync();
             try
             {
-                // Verificar si el usuario ya existe
-                var userExists = await _userManager.FindByEmailAsync(email);
-                if (userExists != null)
-                    return (false, "El usuario ya está registrado");
-
-                // Verificar si la matrícula ya existe
-                var doctorExistente = await _doctorRepository.FindAsync(d => d.Matricula == matricula);
-                if (doctorExistente.Any())
-                    return (false, "La matrícula ya está registrada");
-
                 // 1. Crear el usuario en AspNetUsers
                 var newUser = new ApplicationUser
                 {
@@ -216,43 +175,101 @@ namespace turnero_medico_backend.Services
                 var result = await _userManager.CreateAsync(newUser, password);
                 if (!result.Succeeded)
                 {
+                    await transaction.RollbackAsync();
                     var errors = string.Join(", ", result.Errors.Select(e => e.Description));
                     return (false, $"Error al crear el usuario: {errors}");
                 }
 
                 // 2. Asignar rol Doctor
-                var roleExists = await _roleManager.RoleExistsAsync("Doctor");
-                if (!roleExists)
-                {
-                    await _roleManager.CreateAsync(new ApplicationRole("Doctor") { Descripcion = "Rol de Doctor" });
-                }
-
+                await EnsureRoleExistsAsync("Doctor");
                 await _userManager.AddToRoleAsync(newUser, "Doctor");
 
-                // 3. Crear el registro en la tabla Doctores
-                var doctor = new Doctor
+                // 3. Vincular o crear Doctor
+                if (doctorExistente != null)
                 {
-                    Matricula = matricula,
-                    Nombre = nombre,
-                    Apellido = apellido,
-                    Especialidad = especialidad,
-                    Email = email,
-                    Telefono = telefono,
-                    UserId = newUser.Id  // ← vincular entidad con cuenta de usuario
-                };
+                    // Doctor ya existía (creado vía CRUD sin cuenta) → vincular por Matrícula
+                    doctorExistente.UserId = newUser.Id;
+                    doctorExistente.Email = email;
+                    doctorExistente.Telefono = telefono;
+                    await _doctorRepository.UpdateAsync(doctorExistente);
 
-                var createdDoctor = await _doctorRepository.AddAsync(doctor);
+                    newUser.DoctorId = doctorExistente.Id;
+                }
+                else
+                {
+                    // Doctor nuevo → crear registro
+                    var doctor = new Doctor
+                    {
+                        Matricula = matricula,
+                        Nombre = nombre,
+                        Apellido = apellido,
+                        Especialidad = especialidad,
+                        Email = email,
+                        Telefono = telefono,
+                        UserId = newUser.Id
+                    };
+
+                    var createdDoctor = await _doctorRepository.AddAsync(doctor);
+                    newUser.DoctorId = createdDoctor.Id;
+                }
 
                 // 4. Actualizar DoctorId en el usuario para navegación inversa
-                newUser.DoctorId = createdDoctor.Id;
                 await _userManager.UpdateAsync(newUser);
 
+                await transaction.CommitAsync();
                 return (true, "Doctor registrado exitosamente");
             }
-            catch (Exception ex)
+            catch
             {
-                // TODO: Si falla la creación del doctor, deberíamos hacer rollback del usuario
-                return (false, $"Error: {ex.Message}");
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        // REGISTRO SECRETARIA (solo Admin)
+        // ─────────────────────────────────────────────────────────────
+        public async Task<(bool Success, string Message)> RegisterSecretariaAsync(
+            string email,
+            string password,
+            string nombre,
+            string apellido)
+        {
+            var userExists = await _userManager.FindByEmailAsync(email);
+            if (userExists != null)
+                return (false, "El email ya está registrado como usuario");
+
+            await using var transaction = await _dbContext.Database.BeginTransactionAsync();
+            try
+            {
+                var newUser = new ApplicationUser
+                {
+                    Email = email,
+                    UserName = email,
+                    Nombre = nombre,
+                    Apellido = apellido,
+                    Rol = "Secretaria",
+                    FechaRegistro = DateTime.UtcNow
+                };
+
+                var result = await _userManager.CreateAsync(newUser, password);
+                if (!result.Succeeded)
+                {
+                    await transaction.RollbackAsync();
+                    var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                    return (false, $"Error al crear el usuario: {errors}");
+                }
+
+                await EnsureRoleExistsAsync("Secretaria");
+                await _userManager.AddToRoleAsync(newUser, "Secretaria");
+
+                await transaction.CommitAsync();
+                return (true, "Secretaria registrada exitosamente");
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
             }
         }
 
@@ -315,6 +332,15 @@ namespace turnero_medico_backend.Services
             );
 
             return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        // Helper: asegura que el rol exista antes de asignarlo
+        private async Task EnsureRoleExistsAsync(string roleName)
+        {
+            if (!await _roleManager.RoleExistsAsync(roleName))
+            {
+                await _roleManager.CreateAsync(new ApplicationRole(roleName) { Descripcion = $"Rol de {roleName}" });
+            }
         }
     }
 }
