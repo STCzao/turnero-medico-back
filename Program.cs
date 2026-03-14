@@ -30,8 +30,14 @@ builder.Services.AddHttpContextAccessor();
 
 // ── Validación fail-fast de configuración obligatoria ──
 // Render usa DATABASE_URL por defecto, también soportamos ConnectionStrings__DefaultConnection
-var connectionString = builder.Configuration["DATABASE_URL"] 
+// Intenta leer desde Environment.GetEnvironmentVariable primero (más directo)
+var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
+    ?? builder.Configuration["DATABASE_URL"] 
     ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+// DEBUG: Log para diagnosticar
+Console.WriteLine($"[DEBUG] DATABASE_URL env: {Environment.GetEnvironmentVariable("DATABASE_URL")?.Substring(0, 20) ?? "NULL"}...");
+Console.WriteLine($"[DEBUG] ConnectionString final: {(string.IsNullOrWhiteSpace(connectionString) ? "EMPTY/NULL" : "OK - length: " + connectionString.Length)}");
 
 if (string.IsNullOrWhiteSpace(connectionString))
 {
