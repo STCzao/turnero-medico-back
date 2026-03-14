@@ -29,9 +29,14 @@ builder.Services.AddAutoMapper(typeof(AutoMapperProfile).Assembly);
 builder.Services.AddHttpContextAccessor();
 
 // ── Validación fail-fast de configuración obligatoria ──
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException(
-        "Falta 'ConnectionStrings:DefaultConnection'. Configurá User Secrets o variables de entorno.");
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new InvalidOperationException(
+        "Falta 'ConnectionStrings:DefaultConnection' o está vacía. " +
+        "Variables de entorno configuradas: " + 
+        string.Join(", ", builder.Configuration.AsEnumerable().Select(x => x.Key)));
+}
 
 var secretKey = builder.Configuration["Jwt:SecretKey"];
 if (string.IsNullOrWhiteSpace(secretKey) || Encoding.UTF8.GetByteCount(secretKey) < 32)
