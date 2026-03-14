@@ -29,14 +29,23 @@ builder.Services.AddAutoMapper(typeof(AutoMapperProfile).Assembly);
 builder.Services.AddHttpContextAccessor();
 
 // ── Leer DATABASE_URL (Render) o ConnectionStrings__DefaultConnection ──
-var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
-    ?? builder.Configuration["DATABASE_URL"] 
-    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL")
+    ?? builder.Configuration["DATABASE_URL"];
 
-if (string.IsNullOrWhiteSpace(connectionString))
+string connectionString;
+
+if (!string.IsNullOrWhiteSpace(databaseUrl))
 {
-    throw new InvalidOperationException(
-        "Falta 'DATABASE_URL' o 'ConnectionStrings__DefaultConnection'.");
+    // Render provee la URL en formato URI (postgresql://user:pass@host/db)
+    // Npgsql necesita formato ADO.NET (Host=...;Database=...;Username=...;Password=...)
+    var uri = new Uri(databaseUrl);
+    var userInfo = uri.UserInfo.Split(':');
+    connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+}
+else
+{
+    connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? throw new InvalidOperationException("Falta 'DATABASE_URL' o 'ConnectionStrings__DefaultConnection'.");
 }
 
 var secretKey = builder.Configuration["Jwt:SecretKey"];
