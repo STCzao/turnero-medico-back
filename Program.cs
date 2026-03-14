@@ -28,9 +28,22 @@ builder.Services.AddAutoMapper(typeof(AutoMapperProfile).Assembly);
 // ← HttpContextAccessor para acceder a User actual en servicios
 builder.Services.AddHttpContextAccessor();
 
+// ── Validación fail-fast de configuración obligatoria ──
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException(
+        "Falta 'ConnectionStrings:DefaultConnection'. Configurá User Secrets o variables de entorno.");
+
+var secretKey = builder.Configuration["Jwt:SecretKey"];
+if (string.IsNullOrWhiteSpace(secretKey) || Encoding.UTF8.GetByteCount(secretKey) < 32)
+    throw new InvalidOperationException(
+        "Falta 'Jwt:SecretKey' o tiene menos de 32 bytes. Configurá User Secrets: dotnet user-secrets set \"Jwt:SecretKey\" \"TuClave...\"");
+
+var issuer = builder.Configuration["Jwt:Issuer"] ?? "turnero-medico-backend";
+var audience = builder.Configuration["Jwt:Audience"] ?? "turnero-medico-app";
+
 // Configurar Entity Framework con PostgreSQL
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(connectionString));
 
 // Configurar ASP.NET Identity
 builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
@@ -44,12 +57,6 @@ builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
 })
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
-
-// Configurar autenticación JWT
-var jwtSettings = builder.Configuration.GetSection("Jwt");
-var secretKey = builder.Configuration["Jwt:SecretKey"];
-var issuer = builder.Configuration["Jwt:Issuer"];
-var audience = builder.Configuration["Jwt:Audience"];
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -70,9 +77,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 // Registrar Repository Pattern genérico
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 
-// TurnoRepository tiene registro explícito porque implementa ITurnoRepository
-// (métodos especializados con Include para navegaciones de Turno).
+// Repositorios especializados con Include para navegaciones
 builder.Services.AddScoped<ITurnoRepository, TurnoRepository>();
+builder.Services.AddScoped<IPacienteRepository, PacienteRepository>();
 
 // Registrar Servicios
 builder.Services.AddScoped<IPacienteService, PacienteService>();
@@ -82,7 +89,7 @@ builder.Services.AddScoped<IObraSocialService, ObraSocialService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IHorarioService, HorarioService>();
 builder.Services.AddScoped<SeedDataService>();
-builder.Services.AddScoped<CurrentUserService>();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
 // Configurar CORS para permitir requests desde React (desarrollo)
 builder.Services.AddCors(options =>

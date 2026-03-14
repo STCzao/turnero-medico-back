@@ -13,14 +13,14 @@ namespace turnero_medico_backend.Services
         IRepository<Doctor> doctorRepository,
         IRepository<ObraSocial> obraSocialRepository,
         IMapper mapper,
-        CurrentUserService currentUserService) : ITurnoService
+        ICurrentUserService currentUserService) : ITurnoService
     {
         private readonly ITurnoRepository _turnoRepository = turnoRepository;
         private readonly IRepository<Paciente> _pacienteRepository = pacienteRepository;
         private readonly IRepository<Doctor> _doctorRepository = doctorRepository;
         private readonly IRepository<ObraSocial> _obraSocialRepository = obraSocialRepository;
         private readonly IMapper _mapper = mapper;
-        private readonly CurrentUserService _currentUserService = currentUserService;
+        private readonly ICurrentUserService _currentUserService = currentUserService;
 
         // ─────────────────────────────────────────────────────────────
         // LECTURA
@@ -363,8 +363,8 @@ namespace turnero_medico_backend.Services
 
             if (userRole == "Admin" || userRole == "Secretaria")
             {
-                turno.Estado        = EstadoTurno.Cancelado;
-                turno.MotivoRechazo = dto.Motivo;
+                turno.Estado             = EstadoTurno.Cancelado;
+                turno.MotivoCancelacion  = dto.Motivo;
                 await _turnoRepository.UpdateAsync(turno);
                 var canceladoAdmin = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
                 return _mapper.Map<TurnoReadDto>(canceladoAdmin!);
@@ -382,8 +382,8 @@ namespace turnero_medico_backend.Services
                 if (turno.Estado != EstadoTurno.Confirmado)
                     throw new InvalidOperationException("El doctor solo puede cancelar turnos confirmados.");
 
-                turno.Estado        = EstadoTurno.Cancelado;
-                turno.MotivoRechazo = dto.Motivo;
+                turno.Estado             = EstadoTurno.Cancelado;
+                turno.MotivoCancelacion  = dto.Motivo;
                 await _turnoRepository.UpdateAsync(turno);
                 var canceladoDoctor = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
                 return _mapper.Map<TurnoReadDto>(canceladoDoctor!);
@@ -397,8 +397,8 @@ namespace turnero_medico_backend.Services
                 if (paciente.UserId != userId && paciente.ResponsableId != userId)
                     throw new UnauthorizedAccessException("No tienes permisos para cancelar este turno.");
 
-                turno.Estado        = EstadoTurno.Cancelado;
-                turno.MotivoRechazo = dto.Motivo;
+                turno.Estado             = EstadoTurno.Cancelado;
+                turno.MotivoCancelacion  = dto.Motivo;
                 await _turnoRepository.UpdateAsync(turno);
                 var canceladoPaciente = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
                 return _mapper.Map<TurnoReadDto>(canceladoPaciente!);

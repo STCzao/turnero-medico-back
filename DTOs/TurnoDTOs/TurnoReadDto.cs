@@ -30,6 +30,7 @@ public class TurnoReadDto
     // Gestión por secretaria
     public string? NotasSecretaria { get; set; }
     public string? MotivoRechazo { get; set; }
+    public string? MotivoCancelacion { get; set; }
     public string? ConfirmadaPorId { get; set; }
     public DateTime? FechaGestion { get; set; }
 

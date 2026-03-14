@@ -10,7 +10,7 @@ namespace turnero_medico_backend.Services
     public class DoctorService(
         IRepository<Doctor> _repository,
         IMapper _mapper,
-        CurrentUserService _currentUserService
+        ICurrentUserService _currentUserService
     ) : IDoctorService
     {
 

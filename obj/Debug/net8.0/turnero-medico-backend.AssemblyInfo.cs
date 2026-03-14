@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("turnero-medico-backend")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d16762d72c61b1251dad7f26bb075217285139c0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+029a22b566ec90d156e498b0d6fc1bb149b0ec92")]
 [assembly: System.Reflection.AssemblyProductAttribute("turnero-medico-backend")]
 [assembly: System.Reflection.AssemblyTitleAttribute("turnero-medico-backend")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

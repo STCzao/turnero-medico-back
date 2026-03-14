@@ -290,7 +290,8 @@ namespace turnero_medico_backend.Services
                     return (false, string.Empty, "Credenciales inválidas");
 
                 // Generar token JWT
-                var token = GenerateJwtToken(user);
+                var roles = await _userManager.GetRolesAsync(user);
+                var token = GenerateJwtToken(user, roles);
 
                 return (true, token, "Login exitoso");
             }
@@ -302,21 +303,22 @@ namespace turnero_medico_backend.Services
 
         /// Genera un token JWT firmado para el usuario
 
-        private string GenerateJwtToken(ApplicationUser user)
+        private string GenerateJwtToken(ApplicationUser user, IList<string> roles)
         {
             var secretKey = _configuration["Jwt:SecretKey"];
             var issuer = _configuration["Jwt:Issuer"];
             var audience = _configuration["Jwt:Audience"];
             var expirationMinutes = int.Parse(_configuration["Jwt:ExpirationMinutes"] ?? "1440");
 
-            // Crear las claims (información del usuario en el token)
-            var claims = new[]
+            var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.NameIdentifier, user.Id),
-                new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
-                new Claim(ClaimTypes.Name, $"{user.Nombre} {user.Apellido}"),
-                new Claim(ClaimTypes.Role, user.Rol)  // ← Única fuente de verdad; usado por [Authorize(Roles="")] y CurrentUserService
+                new(ClaimTypes.NameIdentifier, user.Id),
+                new(ClaimTypes.Email, user.Email ?? string.Empty),
+                new(ClaimTypes.Name, $"{user.Nombre} {user.Apellido}"),
             };
+
+            foreach (var role in roles)
+                claims.Add(new Claim(ClaimTypes.Role, role));
 
             // Crear la clave de firma
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey ?? string.Empty));
