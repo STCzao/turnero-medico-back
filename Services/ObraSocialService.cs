@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using turnero_medico_backend.DTOs.Common;
 using turnero_medico_backend.DTOs.ObraSocialDTOs;
 using turnero_medico_backend.Models.Entities;
 using turnero_medico_backend.Repositories.Interfaces;
@@ -17,6 +18,18 @@ namespace turnero_medico_backend.Services
         {
             var obras = await _repository.GetAllAsync();
             return obras.Select(o => _mapper.Map<ObraSocialReadDto>(o));
+        }
+
+        public async Task<PagedResultDto<ObraSocialReadDto>> GetAllPagedAsync(int page, int pageSize)
+        {
+            var (items, total) = await _repository.GetAllPagedAsync(page, pageSize);
+            return new PagedResultDto<ObraSocialReadDto>
+            {
+                Items = items.Select(o => _mapper.Map<ObraSocialReadDto>(o)),
+                Total = total,
+                Page = page,
+                PageSize = pageSize
+            };
         }
 
         public async Task<ObraSocialReadDto?> GetByIdAsync(int id)

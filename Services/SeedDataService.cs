@@ -9,10 +9,12 @@ namespace turnero_medico_backend.Services
     public class SeedDataService(
         RoleManager<ApplicationRole> roleManager,
         UserManager<ApplicationUser> userManager,
+        IConfiguration configuration,
         ILogger<SeedDataService> logger)
     {
         private readonly RoleManager<ApplicationRole> _roleManager = roleManager;
         private readonly UserManager<ApplicationUser> _userManager = userManager;
+        private readonly IConfiguration _configuration = configuration;
         private readonly ILogger<SeedDataService> _logger = logger;
 
         public async Task SeedAsync()
@@ -57,8 +59,10 @@ namespace turnero_medico_backend.Services
 
         private async Task CreateAdminUserAsync()
         {
-            const string adminEmail    = "admin@turneromedico.local";
-            const string adminPassword = "Admin@123456";
+            var adminEmail = _configuration["AdminSeed:Email"] ?? "admin@turneromedico.local";
+            var adminPassword = _configuration["AdminSeed:Password"]
+                ?? throw new InvalidOperationException(
+                    "Falta 'AdminSeed:Password'. Configurá User Secrets: dotnet user-secrets set \"AdminSeed:Password\" \"TuPassword\"");
 
             if (await _userManager.FindByEmailAsync(adminEmail) != null)
             {

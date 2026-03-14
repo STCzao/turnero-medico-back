@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using turnero_medico_backend.DTOs.Common;
 using turnero_medico_backend.DTOs.ObraSocialDTOs;
 using turnero_medico_backend.Services.Interfaces;
 
@@ -7,13 +8,15 @@ namespace turnero_medico_backend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Admin, Secretaria")]
+    [Authorize]
     public class ObrasSocialesController(IObraSocialService _service) : ControllerBase
     {
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<ObraSocialReadDto>>> GetAll()
+        public async Task<ActionResult<PagedResultDto<ObraSocialReadDto>>> GetAll(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20)
         {
-            var obras = await _service.GetAllAsync();
+            var obras = await _service.GetAllPagedAsync(page, pageSize);
             return Ok(obras);
         }
 
@@ -27,6 +30,7 @@ namespace turnero_medico_backend.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin,Secretaria")]
         public async Task<ActionResult<ObraSocialReadDto>> Create(ObraSocialCreateDto dto)
         {
             if (!ModelState.IsValid)
@@ -37,6 +41,7 @@ namespace turnero_medico_backend.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin,Secretaria")]
         public async Task<ActionResult<ObraSocialReadDto>> Update(int id, ObraSocialUpdateDto dto)
         {
             if (!ModelState.IsValid)
@@ -49,6 +54,7 @@ namespace turnero_medico_backend.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin,Secretaria")]
         public async Task<ActionResult> Delete(int id)
         {
             var success = await _service.DeleteAsync(id);

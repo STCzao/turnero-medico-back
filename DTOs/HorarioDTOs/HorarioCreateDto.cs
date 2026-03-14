@@ -19,6 +19,6 @@ namespace turnero_medico_backend.DTOs.HorarioDTOs
         public TimeOnly HoraFin { get; set; }
 
         [Range(10, 120, ErrorMessage = "La duración debe ser entre 10 y 120 minutos")]
-        public int DuracionMinutos { get; set; } = 20;
+        public int DuracionMinutos { get; set; } = 30;
     }
 }

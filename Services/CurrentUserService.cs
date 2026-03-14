@@ -1,9 +1,9 @@
 using System.Security.Claims;
+using turnero_medico_backend.Services.Interfaces;
 
 namespace turnero_medico_backend.Services
 {
-    // Helper para acceder a información del usuario autenticado actual   
-    public class CurrentUserService(IHttpContextAccessor httpContextAccessor)
+    public class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICurrentUserService
     {
         private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 

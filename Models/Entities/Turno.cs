@@ -29,7 +29,8 @@ namespace turnero_medico_backend.Models.Entities
 
         // ===== Gestión por secretaria =====
         public string? NotasSecretaria { get; set; }   // Condiciones, copago, requisitos informados al paciente
-        public string? MotivoRechazo { get; set; }     // Obligatorio si Estado = Rechazado o Cancelado
+        public string? MotivoRechazo { get; set; }     // Obligatorio si Estado = Rechazado
+        public string? MotivoCancelacion { get; set; }  // Obligatorio si Estado = Cancelado
         public string? ConfirmadaPorId { get; set; }   // FK → AspNetUser (secretaria o admin que gestionó)
         public DateTime? FechaGestion { get; set; }    // Cuándo se confirmó/rechazó
 
