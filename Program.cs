@@ -28,28 +28,21 @@ builder.Services.AddAutoMapper(typeof(AutoMapperProfile).Assembly);
 // ← HttpContextAccessor para acceder a User actual en servicios
 builder.Services.AddHttpContextAccessor();
 
-// ── Validación fail-fast de configuración obligatoria ──
-// Render usa DATABASE_URL por defecto, también soportamos ConnectionStrings__DefaultConnection
-// Intenta leer desde Environment.GetEnvironmentVariable primero (más directo)
+// ── Leer DATABASE_URL (Render) o ConnectionStrings__DefaultConnection ──
 var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
     ?? builder.Configuration["DATABASE_URL"] 
     ?? builder.Configuration.GetConnectionString("DefaultConnection");
 
-// DEBUG: Log para diagnosticar
-Console.WriteLine($"[DEBUG] DATABASE_URL env: {Environment.GetEnvironmentVariable("DATABASE_URL")?.Substring(0, 20) ?? "NULL"}...");
-Console.WriteLine($"[DEBUG] ConnectionString final: {(string.IsNullOrWhiteSpace(connectionString) ? "EMPTY/NULL" : "OK - length: " + connectionString.Length)}");
-
 if (string.IsNullOrWhiteSpace(connectionString))
 {
     throw new InvalidOperationException(
-        "Falta 'DATABASE_URL' o 'ConnectionStrings__DefaultConnection'. " +
-        "Configurá la cadena de conexión a PostgreSQL.");
+        "Falta 'DATABASE_URL' o 'ConnectionStrings__DefaultConnection'.");
 }
 
 var secretKey = builder.Configuration["Jwt:SecretKey"];
 if (string.IsNullOrWhiteSpace(secretKey) || Encoding.UTF8.GetByteCount(secretKey) < 32)
     throw new InvalidOperationException(
-        "Falta 'Jwt:SecretKey' o tiene menos de 32 bytes. Configurá User Secrets: dotnet user-secrets set \"Jwt:SecretKey\" \"TuClave...\"");
+        "Falta 'Jwt:SecretKey' o tiene menos de 32 bytes.");
 
 var issuer = builder.Configuration["Jwt:Issuer"] ?? "turnero-medico-backend";
 var audience = builder.Configuration["Jwt:Audience"] ?? "turnero-medico-app";
