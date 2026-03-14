@@ -1,0 +1,10 @@
+**/.git
+**/.vs
+**/.vscode
+**/bin
+**/obj
+**/.dockerignore
+**/.gitignore
+**/Dockerfile
+README.md
+ANALISIS.md
