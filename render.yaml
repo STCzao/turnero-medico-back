@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: turnero-medico-backend
+    runtime: docker
+    plan: free
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://0.0.0.0:10000
+      - key: ConnectionStrings__DefaultConnection
+        sync: false
+      - key: Jwt__SecretKey
+        generateValue: true
+      - key: Jwt__Issuer
+        value: turnero-medico-backend
+      - key: Jwt__Audience
+        value: turnero-medico-app
+      - key: Jwt__ExpirationMinutes
+        value: 1440
+      - key: AdminSeed__Email
+        value: admin@turneromedico.local
+      - key: AdminSeed__Password
+        sync: false

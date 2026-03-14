@@ -142,6 +142,14 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
+// ← Aplicar migraciones automáticamente en producción
+if (app.Environment.IsProduction())
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    db.Database.Migrate();
+}
+
 // ← Ejecutar Data Seeding (crear roles y usuario admin)
 await app.SeedDatabaseAsync();
 
