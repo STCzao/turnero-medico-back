@@ -29,13 +29,15 @@ builder.Services.AddAutoMapper(typeof(AutoMapperProfile).Assembly);
 builder.Services.AddHttpContextAccessor();
 
 // ── Validación fail-fast de configuración obligatoria ──
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+// Render usa DATABASE_URL por defecto, también soportamos ConnectionStrings__DefaultConnection
+var connectionString = builder.Configuration["DATABASE_URL"] 
+    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
 if (string.IsNullOrWhiteSpace(connectionString))
 {
     throw new InvalidOperationException(
-        "Falta 'ConnectionStrings:DefaultConnection' o está vacía. " +
-        "Variables de entorno configuradas: " + 
-        string.Join(", ", builder.Configuration.AsEnumerable().Select(x => x.Key)));
+        "Falta 'DATABASE_URL' o 'ConnectionStrings__DefaultConnection'. " +
+        "Configurá la cadena de conexión a PostgreSQL.");
 }
 
 var secretKey = builder.Configuration["Jwt:SecretKey"];
