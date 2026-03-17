@@ -8,7 +8,8 @@ public class TurnoReadDto
     public DateTime? FechaHora { get; set; }
     public string Motivo { get; set; } = string.Empty;
     public string Estado { get; set; } = string.Empty;
-    public string Especialidad { get; set; } = string.Empty;
+    public int EspecialidadId { get; set; }
+    public string EspecialidadNombre { get; set; } = string.Empty;
 
     public int PacienteId { get; set; }
     public string PacienteNombre { get; set; } = string.Empty;

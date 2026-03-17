@@ -53,6 +53,13 @@ namespace turnero_medico_backend.Data
             .OnDelete(DeleteBehavior.Restrict)
             .IsRequired(false);
 
+            // Relación: Turno-Especialidad (muchos-a-uno)
+            modelBuilder.Entity<Turno>()
+                .HasOne(t => t.Especialidad)
+                .WithMany()
+                .HasForeignKey(t => t.EspecialidadId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             // Doctor → Especialidad (muchos-a-uno)
             modelBuilder.Entity<Doctor>()
                 .HasOne(d => d.Especialidad)

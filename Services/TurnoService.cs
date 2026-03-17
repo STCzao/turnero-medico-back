@@ -195,7 +195,7 @@ namespace turnero_medico_backend.Services
             {
                 PacienteId              = dto.PacienteId,
                 DoctorId                = dto.DoctorId,
-                Especialidad            = especialidad.Nombre,
+                EspecialidadId          = dto.EspecialidadId,
                 Motivo                  = dto.Motivo,
                 Estado                  = EstadoTurno.SolicitudPendiente,
                 CreatedByUserId         = userId,
@@ -288,13 +288,14 @@ namespace turnero_medico_backend.Services
                 ?? throw new InvalidOperationException($"El doctor con ID {doctorId} no existe.");
 
             // Validar que la especialidad del doctor coincida con la del turno
-            var especialidadDoctor = await _especialidadRepository.GetByIdAsync(doctor.EspecialidadId)
-                ?? throw new InvalidOperationException($"La especialidad del doctor no existe.");
-
-            if (!especialidadDoctor.Nombre.Equals(turno.Especialidad, StringComparison.OrdinalIgnoreCase))
+            if (doctor.EspecialidadId != turno.EspecialidadId)
+            {
+                var espDoctor = await _especialidadRepository.GetByIdAsync(doctor.EspecialidadId);
+                var espTurno  = await _especialidadRepository.GetByIdAsync(turno.EspecialidadId);
                 throw new InvalidOperationException(
-                    $"El doctor '{doctor.Nombre} {doctor.Apellido}' es especialista en '{especialidadDoctor.Nombre}', "
-                    + $"pero el turno requiere '{turno.Especialidad}'.");
+                    $"El doctor '{doctor.Nombre} {doctor.Apellido}' es especialista en '{espDoctor?.Nombre}', "
+                    + $"pero el turno requiere '{espTurno?.Nombre}'.");
+            }
 
             if (dto.FechaHora <= DateTime.UtcNow)
                 throw new InvalidOperationException("La fecha y hora del turno debe ser en el futuro.");

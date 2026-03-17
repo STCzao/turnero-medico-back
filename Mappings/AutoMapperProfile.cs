@@ -42,7 +42,9 @@ namespace turnero_medico_backend.Mappings
                 .ForMember(dest => dest.PacienteNombre, 
                     opt => opt.MapFrom(src => src.Paciente != null ? $"{src.Paciente.Nombre} {src.Paciente.Apellido}" : "No disponible"))
                 .ForMember(dest => dest.DoctorNombre, 
-                    opt => opt.MapFrom(src => src.Doctor != null ? $"{src.Doctor.Nombre} {src.Doctor.Apellido}" : "Sin asignar"));
+                    opt => opt.MapFrom(src => src.Doctor != null ? $"{src.Doctor.Nombre} {src.Doctor.Apellido}" : "Sin asignar"))
+                .ForMember(dest => dest.EspecialidadNombre,
+                    opt => opt.MapFrom(src => src.Especialidad != null ? src.Especialidad.Nombre : string.Empty));
 
             CreateMap<TurnoCreateDto, Turno>()
                 .ForMember(dest => dest.Estado, opt => opt.Ignore())  // Estado siempre SolicitudPendiente

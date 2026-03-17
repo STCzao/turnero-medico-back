@@ -16,6 +16,7 @@ namespace turnero_medico_backend.Repositories
                 .Include(t => t.Paciente)
                 .Include(t => t.Doctor)
                 .Include(t => t.ObraSocial)
+                .Include(t => t.Especialidad)
                 .FirstOrDefaultAsync(t => t.Id == id);
         }
 
@@ -25,6 +26,7 @@ namespace turnero_medico_backend.Repositories
                 .Include(t => t.Paciente)
                 .Include(t => t.Doctor)
                 .Include(t => t.ObraSocial)
+                .Include(t => t.Especialidad)
                 .Where(predicate)
                 .ToListAsync();
         }
@@ -35,6 +37,7 @@ namespace turnero_medico_backend.Repositories
                 .Include(t => t.Paciente)
                 .Include(t => t.Doctor)
                 .Include(t => t.ObraSocial)
+                .Include(t => t.Especialidad)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(estado))

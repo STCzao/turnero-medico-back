@@ -295,9 +295,9 @@ namespace turnero_medico_backend.Services
 
                 return (true, token, "Login exitoso");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, string.Empty, $"Error: {ex.Message}");
+                return (false, string.Empty, "Error interno al intentar iniciar sesión. Intente nuevamente.");
             }
         }
 
