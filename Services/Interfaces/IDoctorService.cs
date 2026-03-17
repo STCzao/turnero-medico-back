@@ -7,7 +7,7 @@ namespace turnero_medico_backend.Services.Interfaces
     {
         Task<IEnumerable<DoctorReadDto>> GetAllAsync();
         Task<PagedResultDto<DoctorReadDto>> GetAllPagedAsync(int page, int pageSize);
-        Task<IEnumerable<DoctorReadDto>> GetByEspecialidadAsync(string especialidad);
+        Task<IEnumerable<DoctorReadDto>> GetByEspecialidadAsync(int especialidadId);
         Task<DoctorReadDto?> GetByIdAsync(int id);
         Task<DoctorReadDto?> GetMyProfileAsync();  // ← NUEVO: Obtener perfil propio
         Task<DoctorReadDto> CreateAsync(DoctorCreateDto dto);

@@ -10,9 +10,8 @@ namespace turnero_medico_backend.DTOs.TurnoDTOs
         public int PacienteId { get; set; }
 
         [Required(ErrorMessage = "La especialidad es obligatoria")]
-        [StringLength(30, MinimumLength = 3, ErrorMessage = "La especialidad debe tener entre {2} y {1} caracteres")]
-        [RegularExpression(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$", ErrorMessage = "La especialidad solo puede contener letras y espacios")]
-        public string Especialidad { get; set; } = string.Empty;
+        [Range(1, int.MaxValue, ErrorMessage = "Debe seleccionar una especialidad válida")]
+        public int EspecialidadId { get; set; }
 
         // Opcional: el paciente puede solicitar un doctor específico.
         // Si no lo indica, la secretaria asigna al confirmar.

@@ -36,12 +36,12 @@ namespace turnero_medico_backend.Controllers
         }
 
 
-        [HttpGet("especialidad/{especialidad}")]
-        public async Task<ActionResult<IEnumerable<DoctorReadDto>>> GetByEspecialidad(string especialidad)
+        [HttpGet("especialidad/{especialidadId}")]
+        public async Task<ActionResult<IEnumerable<DoctorReadDto>>> GetByEspecialidad(int especialidadId)
         {
-            var doctores = await _service.GetByEspecialidadAsync(especialidad);
+            var doctores = await _service.GetByEspecialidadAsync(especialidadId);
             if (!doctores.Any())
-                return NotFound(new { mensaje = $"No hay doctores con especialidad '{especialidad}'" });
+                return NotFound(new { mensaje = $"No hay doctores con especialidad ID '{especialidadId}'" });
 
             return Ok(doctores);
         }

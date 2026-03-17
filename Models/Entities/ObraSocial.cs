@@ -6,8 +6,8 @@ namespace turnero_medico_backend.Models.Entities
 
         public string Nombre { get; set; } = string.Empty;
 
-        // Especialidades cubiertas. Almacenado como JSONB en PostgreSQL.
-        public List<string> Especialidades { get; set; } = [];
+        // Especialidades cubiertas (relación muchos-a-muchos)
+        public ICollection<Especialidad> Especialidades { get; set; } = new List<Especialidad>();
 
         // Planes disponibles (ej: "Plan 210", "Plan 310"). Almacenado como JSONB.
         public List<string> Planes { get; set; } = [];

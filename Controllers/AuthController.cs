@@ -54,7 +54,7 @@ namespace turnero_medico_backend.Controllers
                 request.Nombre,
                 request.Apellido,
                 request.Matricula,
-                request.Especialidad,
+                request.EspecialidadId,
                 request.Telefono
             );
 

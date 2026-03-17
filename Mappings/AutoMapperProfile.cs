@@ -1,5 +1,6 @@
 using AutoMapper;
 using turnero_medico_backend.DTOs.DoctorDTOs;
+using turnero_medico_backend.DTOs.EspecialidadDTOs;
 using turnero_medico_backend.DTOs.HorarioDTOs;
 using turnero_medico_backend.DTOs.ObraSocialDTOs;
 using turnero_medico_backend.DTOs.PacienteDTOs;
@@ -13,10 +14,12 @@ namespace turnero_medico_backend.Mappings
     {
         public AutoMapperProfile()
         {
+            // Especialidad mappings
+            CreateMap<Especialidad, EspecialidadReadDto>();
+            CreateMap<EspecialidadCreateDto, Especialidad>();
+
             // ObraSocial mappings
             CreateMap<ObraSocial, ObraSocialReadDto>();
-            CreateMap<ObraSocialCreateDto, ObraSocial>();
-            CreateMap<ObraSocialUpdateDto, ObraSocial>();
 
             // Paciente mappings
             CreateMap<Paciente, PacienteReadDto>()
@@ -28,7 +31,7 @@ namespace turnero_medico_backend.Mappings
 
             // Doctor mappings
             CreateMap<Doctor, DoctorReadDto>()
-                .ReverseMap();
+                .ForMember(dest => dest.EspecialidadNombre, opt => opt.Ignore());
 
             CreateMap<DoctorCreateDto, Doctor>();
 
