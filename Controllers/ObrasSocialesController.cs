@@ -54,7 +54,7 @@ namespace turnero_medico_backend.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin,Secretaria")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult> Delete(int id)
         {
             var success = await _service.DeleteAsync(id);

@@ -6,7 +6,6 @@ namespace turnero_medico_backend.Services.Interfaces
 {
     public interface IPacienteService
     {
-        Task<IEnumerable<PacienteReadDto>> GetAllAsync();
         Task<PagedResultDto<PacienteReadDto>> GetAllPagedAsync(int page, int pageSize);
         Task<PacienteReadDto?> GetByIdAsync(int id);
         Task<PacienteReadDto?> GetMyProfileAsync();

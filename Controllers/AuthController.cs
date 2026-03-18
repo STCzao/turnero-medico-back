@@ -17,6 +17,7 @@ namespace turnero_medico_backend.Controllers
         // se vincula a la cuenta nueva en vez de crear otro registro.
         [HttpPost("register-paciente")]
         [AllowAnonymous]
+        [EnableRateLimiting("register")]
         public async Task<IActionResult> RegisterPaciente([FromBody] RegisterPacienteDto request)
         {
             if (!ModelState.IsValid)

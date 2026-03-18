@@ -1,4 +1,5 @@
 using AutoMapper;
+using Microsoft.EntityFrameworkCore;
 using turnero_medico_backend.DTOs.EspecialidadDTOs;
 using turnero_medico_backend.Models.Entities;
 using turnero_medico_backend.Repositories.Interfaces;
@@ -27,7 +28,7 @@ namespace turnero_medico_backend.Services
 
         public async Task<EspecialidadReadDto> CreateAsync(EspecialidadCreateDto dto)
         {
-            var existente = await _repository.FindAsync(e => e.Nombre.ToLower() == dto.Nombre.ToLower());
+            var existente = await _repository.FindAsync(e => EF.Functions.ILike(e.Nombre, dto.Nombre));
             if (existente.Any())
                 throw new InvalidOperationException($"Ya existe una especialidad con el nombre '{dto.Nombre}'");
 
@@ -41,7 +42,7 @@ namespace turnero_medico_backend.Services
             var especialidad = await _repository.GetByIdAsync(id);
             if (especialidad == null) return null;
 
-            var duplicado = await _repository.FindAsync(e => e.Nombre.ToLower() == dto.Nombre.ToLower() && e.Id != id);
+            var duplicado = await _repository.FindAsync(e => EF.Functions.ILike(e.Nombre, dto.Nombre) && e.Id != id);
             if (duplicado.Any())
                 throw new InvalidOperationException($"Ya existe una especialidad con el nombre '{dto.Nombre}'");
 

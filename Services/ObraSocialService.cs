@@ -15,14 +15,6 @@ namespace turnero_medico_backend.Services
         private readonly ApplicationDbContext _context = context;
         private readonly IMapper _mapper = mapper;
 
-        public async Task<IEnumerable<ObraSocialReadDto>> GetAllAsync()
-        {
-            var obras = await _context.ObrasSociales
-                .Include(o => o.Especialidades)
-                .ToListAsync();
-            return obras.Select(o => _mapper.Map<ObraSocialReadDto>(o));
-        }
-
         public async Task<PagedResultDto<ObraSocialReadDto>> GetAllPagedAsync(int page, int pageSize)
         {
             var total = await _context.ObrasSociales.CountAsync();

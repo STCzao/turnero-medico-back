@@ -28,16 +28,6 @@ namespace turnero_medico_backend.Services
         // LECTURA
         // ─────────────────────────────────────────────────────────────
 
-        public async Task<IEnumerable<TurnoReadDto>> GetAllAsync()
-        {
-            var userRole = _currentUserService.GetUserRole();
-            if (userRole != "Admin" && userRole != "Secretaria")
-                throw new UnauthorizedAccessException("No tienes permisos para ver el listado completo de turnos.");
-
-            var turnos = await _turnoRepository.FindWithDetailsAsync(_ => true);
-            return turnos.Select(t => _mapper.Map<TurnoReadDto>(t));
-        }
-
         public async Task<PagedResultDto<TurnoReadDto>> GetAllPagedAsync(int page, int pageSize, string? estado = null)
         {
             var userRole = _currentUserService.GetUserRole();
@@ -489,11 +479,15 @@ namespace turnero_medico_backend.Services
             var doctor = doctores.FirstOrDefault()
                 ?? throw new InvalidOperationException("No se encontró un registro de doctor asociado a tu usuario.");
 
+            var fechaInicio = fecha.Date.ToUniversalTime();
+            var fechaFin = fechaInicio.AddDays(1);
+
             var turnos = await _turnoRepository.FindWithDetailsAsync(t =>
                 t.DoctorId == doctor.Id &&
                 t.Estado == EstadoTurno.Confirmado &&
                 t.FechaHora.HasValue &&
-                t.FechaHora.Value.Date == fecha.Date);
+                t.FechaHora >= fechaInicio &&
+                t.FechaHora < fechaFin);
 
             var ordenados = turnos.OrderBy(t => t.FechaHora);
             return ordenados.Select(t => _mapper.Map<TurnoReadDto>(t));

@@ -24,6 +24,7 @@ namespace turnero_medico_backend.Repositories
         {
             var total = await _dbSet.CountAsync();
             var items = await _dbSet
+                .OrderBy(e => EF.Property<object>(e, "Id"))
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();

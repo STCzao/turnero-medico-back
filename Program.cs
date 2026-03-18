@@ -96,6 +96,7 @@ builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 // Repositorios especializados con Include para navegaciones
 builder.Services.AddScoped<ITurnoRepository, TurnoRepository>();
 builder.Services.AddScoped<IPacienteRepository, PacienteRepository>();
+builder.Services.AddScoped<IDoctorRepository, DoctorRepository>();
 
 // Registrar Servicios
 builder.Services.AddScoped<IPacienteService, PacienteService>();
@@ -108,20 +109,35 @@ builder.Services.AddScoped<IEspecialidadService, EspecialidadService>();
 builder.Services.AddScoped<SeedDataService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
-// Configurar CORS para permitir requests desde React (desarrollo)
+// Configurar CORS
 builder.Services.AddCors(options =>
 {
+    // Desarrollo: permite desde localhost de React
     options.AddPolicy("AllowReactDev", policy =>
     {
         policy
-            .WithOrigins("http://localhost:5173", "http://localhost:3000") // Vite y Create React App
-            .AllowAnyMethod()      // GET, POST, PUT, DELETE, PATCH, etc.
-            .AllowAnyHeader()      // Content-Type, Authorization, etc.
-            .AllowCredentials();   // Cookies, credenciales
+            .WithOrigins("http://localhost:5173", "http://localhost:3000")
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
     });
+
+    // Producción: sólo el frontend desplegado
+    var frontendUrl = builder.Configuration["Cors:AllowedOrigin"];
+    if (!string.IsNullOrWhiteSpace(frontendUrl))
+    {
+        options.AddPolicy("AllowProduction", policy =>
+        {
+            policy
+                .WithOrigins(frontendUrl)
+                .AllowAnyMethod()
+                .AllowAnyHeader()
+                .AllowCredentials();
+        });
+    }
 });
 
-// Rate limiting: protege el endpoint de login contra fuerza bruta
+// Rate limiting: protege endpoints publicos contra abuso
 builder.Services.AddRateLimiter(options =>
 {
     options.AddFixedWindowLimiter("login", limiterOptions =>
@@ -130,6 +146,13 @@ builder.Services.AddRateLimiter(options =>
         limiterOptions.PermitLimit = 5;            // máx 5 intentos por minuto por IP
         limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
         limiterOptions.QueueLimit = 0;             // sin cola, rechazar inmediatamente
+    });
+    options.AddFixedWindowLimiter("register", limiterOptions =>
+    {
+        limiterOptions.Window = TimeSpan.FromMinutes(10);
+        limiterOptions.PermitLimit = 5;            // máx 5 registros por 10 minutos por IP
+        limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        limiterOptions.QueueLimit = 0;
     });
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
@@ -149,7 +172,8 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 // ← CORS debe ir ANTES de Authentication
-app.UseCors("AllowReactDev");
+var corsPolicy = app.Environment.IsDevelopment() ? "AllowReactDev" : "AllowProduction";
+app.UseCors(corsPolicy);
 
 // ← Rate limiting
 app.UseRateLimiter();

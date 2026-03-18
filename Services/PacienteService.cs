@@ -13,15 +13,6 @@ namespace turnero_medico_backend.Services
         ICurrentUserService _currentUserService
     ) : IPacienteService
     {
-        public async Task<IEnumerable<PacienteReadDto>> GetAllAsync()
-        {
-            if (!_currentUserService.IsAdmin())
-                throw new UnauthorizedAccessException("No tienes permisos para ver la lista de pacientes");
-
-            var pacientes = await _pacienteRepository.GetAllWithObraSocialAsync();
-            return _mapper.Map<IEnumerable<PacienteReadDto>>(pacientes);
-        }
-
         public async Task<PagedResultDto<PacienteReadDto>> GetAllPagedAsync(int page, int pageSize)
         {
             if (!_currentUserService.IsAdmin())
@@ -39,9 +30,23 @@ namespace turnero_medico_backend.Services
 
         public async Task<PacienteReadDto?> GetByIdAsync(int id)
         {
+            var userRole = _currentUserService.GetUserRole();
+            var userId   = _currentUserService.GetUserId();
+
             var paciente = await _pacienteRepository.GetByIdWithObraSocialAsync(id);
             if (paciente == null)
                 return null;
+
+            // Admin y Secretaria pueden ver cualquier paciente.
+            // Pacientes solo pueden ver su propio perfil o el de sus dependientes.
+            if (userRole == "Admin" || userRole == "Secretaria" || userRole == "Doctor")
+                return _mapper.Map<PacienteReadDto>(paciente);
+
+            if (userRole == "Paciente")
+            {
+                if (paciente.UserId != userId && paciente.ResponsableId != userId)
+                    throw new UnauthorizedAccessException("No tienes permisos para ver este paciente.");
+            }
 
             return _mapper.Map<PacienteReadDto>(paciente);
         }
