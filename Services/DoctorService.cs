@@ -1,4 +1,6 @@
 using AutoMapper;
+using Microsoft.EntityFrameworkCore;
+using turnero_medico_backend.Data;
 using turnero_medico_backend.DTOs.Common;
 using turnero_medico_backend.DTOs.DoctorDTOs;
 using turnero_medico_backend.Models.Entities;
@@ -12,7 +14,8 @@ namespace turnero_medico_backend.Services
         IRepository<Especialidad> _especialidadRepository,
         IMapper _mapper,
         ICurrentUserService _currentUserService,
-        IAuditService _auditService
+        IAuditService _auditService,
+        ApplicationDbContext _dbContext
     ) : IDoctorService
     {
         public async Task<PagedResultDto<DoctorReadDto>> GetAllPagedAsync(int page, int pageSize)
@@ -82,6 +85,11 @@ namespace turnero_medico_backend.Services
 
         public async Task<bool> DeleteAsync(int id)
         {
+            var tieneTurnos = await _dbContext.Turnos.AnyAsync(t => t.DoctorId == id);
+            if (tieneTurnos)
+                throw new InvalidOperationException(
+                    "No se puede eliminar el doctor porque tiene turnos asociados. Cancele o reasigne los turnos primero.");
+
             var deleted = await _repository.DeleteAsync(id);
             if (deleted)
                 await _auditService.LogAsync(AuditAccion.Eliminar, "Doctor", id.ToString());

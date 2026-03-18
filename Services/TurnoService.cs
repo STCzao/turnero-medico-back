@@ -310,24 +310,32 @@ namespace turnero_medico_backend.Services
             // Validar que la FechaHora caiga dentro de un horario de atención configurado del doctor
             var diaSemanaConfirmar = (int)dto.FechaHora.DayOfWeek;
             var horaDelTurno = TimeOnly.FromDateTime(dto.FechaHora);
-            var horarioValido = await _dbContext.Horarios.AnyAsync(h =>
+            var horario = await _dbContext.Horarios.FirstOrDefaultAsync(h =>
                 h.DoctorId == doctorId &&
                 h.DiaSemana == diaSemanaConfirmar &&
                 h.HoraInicio <= horaDelTurno &&
                 horaDelTurno < h.HoraFin);
-            if (!horarioValido)
+            if (horario == null)
                 throw new InvalidOperationException(
                     $"El doctor no tiene horario de atención configurado para el {dto.FechaHora:dddd} a las {dto.FechaHora:HH:mm}.");
 
-            var turnosConflicto = await _turnoRepository.FindAsync(t =>
-                t.DoctorId == doctorId &&
-                t.FechaHora == dto.FechaHora &&
-                t.Estado == EstadoTurno.Confirmado &&
-                t.Id != turnoId);
+            // Verificar conflictos usando rango de tiempo (no solo igualdad exacta).
+            // Dos turnos se superponen si sus intervalos [FechaHora, FechaHora+duracion) se tocan.
+            var duracion   = horario.DuracionMinutos;
+            var slotFin    = dto.FechaHora.AddMinutes(duracion);
+            var slotInicio = dto.FechaHora.AddMinutes(-duracion);
 
-            if (turnosConflicto.Any())
+            var hayConflicto = await _dbContext.Turnos.AnyAsync(t =>
+                t.DoctorId == doctorId &&
+                t.Estado == EstadoTurno.Confirmado &&
+                t.Id != turnoId &&
+                t.FechaHora.HasValue &&
+                t.FechaHora.Value < slotFin &&
+                t.FechaHora.Value > slotInicio);
+
+            if (hayConflicto)
                 throw new InvalidOperationException(
-                    $"El doctor ya tiene un turno confirmado para el {dto.FechaHora:dd/MM/yyyy HH:mm}.");
+                    $"El doctor ya tiene un turno confirmado que se superpone con el horario {dto.FechaHora:dd/MM/yyyy HH:mm}.");
 
             var userId = _currentUserService.GetUserId();
 

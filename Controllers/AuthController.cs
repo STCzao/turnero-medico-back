@@ -96,12 +96,31 @@ namespace turnero_medico_backend.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var (success, token, message) = await _authService.LoginAsync(request.Email, request.Password);
+            var (success, token, refreshToken, message) = await _authService.LoginAsync(request.Email, request.Password);
 
             if (!success)
                 return Unauthorized(new { message });
 
-            return Ok(new { token, message });
+            return Ok(new { token, refreshToken, message });
+        }
+
+        /// <summary>
+        /// Renueva el par access + refresh token. El refresh token anterior queda inválido.
+        /// </summary>
+        [HttpPost("refresh")]
+        [AllowAnonymous]
+        public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequestDto request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var (success, token, refreshToken, message) =
+                await _authService.RefreshTokenAsync(request.UserId, request.RefreshToken);
+
+            if (!success)
+                return Unauthorized(new { message });
+
+            return Ok(new { token, refreshToken, message });
         }
 
         [HttpGet("profile")]

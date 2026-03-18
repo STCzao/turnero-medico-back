@@ -112,6 +112,11 @@ namespace turnero_medico_backend.Services
 
         public async Task<bool> DeleteAsync(int id)
         {
+            var tieneTurnos = await _dbContext.Turnos.AnyAsync(t => t.PacienteId == id);
+            if (tieneTurnos)
+                throw new InvalidOperationException(
+                    "No se puede eliminar el paciente porque tiene turnos asociados. Cancele los turnos primero.");
+
             var deleted = await _pacienteRepository.DeleteAsync(id);
             if (deleted)
                 await _auditService.LogAsync(AuditAccion.Eliminar, "Paciente", id.ToString());
@@ -154,6 +159,12 @@ namespace turnero_medico_backend.Services
             var existentes = await _pacienteRepository.FindAsync(p => p.Dni == dto.Dni);
             if (existentes.Any())
                 throw new InvalidOperationException($"Ya existe un paciente con DNI {dto.Dni}.");
+
+            // Evitar dependencia circular: un paciente que es dependiente de otro no puede tener sus propios dependientes
+            var esDependiente = await _pacienteRepository.FindAsync(p => p.UserId == userId && p.ResponsableId != null);
+            if (esDependiente.Any())
+                throw new InvalidOperationException(
+                    "Los pacientes dependientes no pueden registrar sus propios dependientes.");
 
             var dependiente = new Paciente
             {

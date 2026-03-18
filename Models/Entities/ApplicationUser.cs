@@ -20,5 +20,13 @@ namespace turnero_medico_backend.Models.Entities
 
         // Fecha de creación de la cuenta
         public DateTime FechaRegistro { get; set; } = DateTime.UtcNow;
+
+        // ─── Refresh Token ──────────────────────────────────────────
+        // SHA-256 del token aleatorio emitido en cada login/refresh.
+        // Nunca se almacena el token en claro.
+        public string? RefreshTokenHash { get; set; }
+
+        // Vencimiento del refresh token (30 días por defecto).
+        public DateTime? RefreshTokenExpiry { get; set; }
     }
 }
