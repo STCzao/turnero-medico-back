@@ -99,6 +99,29 @@ namespace turnero_medico_backend.Data
                 .HasForeignKey(h => h.DoctorId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            // Paciente.ResponsableId → AspNetUsers (dependiente vinculado a su responsable)
+            modelBuilder.Entity<Paciente>()
+                .HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(p => p.ResponsableId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .IsRequired(false);
+
+            // Turno.CreatedByUserId → AspNetUsers (quién solicitó el turno)
+            modelBuilder.Entity<Turno>()
+                .HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(t => t.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Turno.ConfirmadaPorId → AspNetUsers (secretaria/admin que gestionó)
+            modelBuilder.Entity<Turno>()
+                .HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(t => t.ConfirmadaPorId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .IsRequired(false);
+
             // Índices para queries frecuentes
             modelBuilder.Entity<Turno>()
                 .HasIndex(t => t.Estado);

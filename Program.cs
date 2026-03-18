@@ -188,7 +188,16 @@ if (app.Environment.IsProduction())
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    db.Database.Migrate();
+    var migrationLogger = scope.ServiceProvider.GetRequiredService<ILogger<ApplicationDbContext>>();
+    try
+    {
+        await db.Database.MigrateAsync();
+    }
+    catch (Exception ex)
+    {
+        migrationLogger.LogError(ex, "Error al aplicar migraciones automáticas. Verifique que la base de datos sea accesible.");
+        throw;
+    }
 }
 
 // ← Ejecutar Data Seeding (crear roles y usuario admin)

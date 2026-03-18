@@ -68,7 +68,6 @@ namespace turnero_medico_backend.Services
                     UserName = email,
                     Nombre = nombre,
                     Apellido = apellido,
-                    Rol = "Paciente",
                     FechaRegistro = DateTime.UtcNow
                 };
 
@@ -168,7 +167,6 @@ namespace turnero_medico_backend.Services
                     UserName = email,
                     Nombre = nombre,
                     Apellido = apellido,
-                    Rol = "Doctor",
                     FechaRegistro = DateTime.UtcNow
                 };
 
@@ -248,7 +246,6 @@ namespace turnero_medico_backend.Services
                     UserName = email,
                     Nombre = nombre,
                     Apellido = apellido,
-                    Rol = "Secretaria",
                     FechaRegistro = DateTime.UtcNow
                 };
 

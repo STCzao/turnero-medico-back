@@ -12,9 +12,6 @@ namespace turnero_medico_backend.Models.Entities
         // Apellido del usuario
         public string Apellido { get; set; } = string.Empty;
 
-        // Rol del usuario: "Paciente", "Doctor", "Admin"
-        public string Rol { get; set; } = string.Empty;
-
         // Relación con Doctor (si es médico)
         public int? DoctorId { get; set; }
 

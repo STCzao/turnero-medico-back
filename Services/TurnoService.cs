@@ -30,10 +30,6 @@ namespace turnero_medico_backend.Services
 
         public async Task<PagedResultDto<TurnoReadDto>> GetAllPagedAsync(int page, int pageSize, string? estado = null)
         {
-            var userRole = _currentUserService.GetUserRole();
-            if (userRole != "Admin" && userRole != "Secretaria")
-                throw new UnauthorizedAccessException("No tienes permisos para ver el listado completo de turnos.");
-
             // GetAllWithDetailsPagedAsync aplica el filtro y la paginación en base de datos.
             // Soluciona el bug anterior donde el filtrado por estado cargaba todos los registros
             // en memoria antes de paginar.

@@ -16,9 +16,6 @@ namespace turnero_medico_backend.Services
     {
         public async Task<PagedResultDto<DoctorReadDto>> GetAllPagedAsync(int page, int pageSize)
         {
-            if (!_currentUserService.IsAdmin())
-                throw new UnauthorizedAccessException("No tienes permisos para ver el listado de doctores.");
-
             var (items, total) = await _repository.GetAllWithEspecialidadPagedAsync(page, pageSize);
             return new PagedResultDto<DoctorReadDto>
             {
