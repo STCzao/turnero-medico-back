@@ -68,8 +68,8 @@ builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
     options.Password.RequireDigit = true;
     options.Password.RequiredLength = 8;
     options.Password.RequireNonAlphanumeric = false;
-    options.Password.RequireUppercase = false;
-    options.Password.RequireLowercase = false;
+    options.Password.RequireUppercase = true;
+    options.Password.RequireLowercase = true;
 })
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
@@ -104,6 +104,7 @@ builder.Services.AddScoped<ITurnoService, TurnoService>();
 builder.Services.AddScoped<IObraSocialService, ObraSocialService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IHorarioService, HorarioService>();
+builder.Services.AddScoped<IEspecialidadService, EspecialidadService>();
 builder.Services.AddScoped<SeedDataService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 

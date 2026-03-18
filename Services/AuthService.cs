@@ -141,7 +141,7 @@ namespace turnero_medico_backend.Services
             string nombre, 
             string apellido, 
             string matricula, 
-            string especialidad, 
+            int especialidadId, 
             string telefono)
         {
             // Verificar si el email ya tiene cuenta
@@ -203,7 +203,7 @@ namespace turnero_medico_backend.Services
                         Matricula = matricula,
                         Nombre = nombre,
                         Apellido = apellido,
-                        Especialidad = especialidad,
+                        EspecialidadId = especialidadId,
                         Email = email,
                         Telefono = telefono,
                         UserId = newUser.Id
@@ -295,9 +295,9 @@ namespace turnero_medico_backend.Services
 
                 return (true, token, "Login exitoso");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, string.Empty, $"Error: {ex.Message}");
+                return (false, string.Empty, "Error interno al intentar iniciar sesión. Intente nuevamente.");
             }
         }
 

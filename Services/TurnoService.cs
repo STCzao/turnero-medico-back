@@ -12,6 +12,7 @@ namespace turnero_medico_backend.Services
         IRepository<Paciente> pacienteRepository,
         IRepository<Doctor> doctorRepository,
         IRepository<ObraSocial> obraSocialRepository,
+        IRepository<Especialidad> especialidadRepository,
         IMapper mapper,
         ICurrentUserService currentUserService) : ITurnoService
     {
@@ -19,6 +20,7 @@ namespace turnero_medico_backend.Services
         private readonly IRepository<Paciente> _pacienteRepository = pacienteRepository;
         private readonly IRepository<Doctor> _doctorRepository = doctorRepository;
         private readonly IRepository<ObraSocial> _obraSocialRepository = obraSocialRepository;
+        private readonly IRepository<Especialidad> _especialidadRepository = especialidadRepository;
         private readonly IMapper _mapper = mapper;
         private readonly ICurrentUserService _currentUserService = currentUserService;
 
@@ -178,10 +180,13 @@ namespace turnero_medico_backend.Services
                 var doctor = await _doctorRepository.GetByIdAsync(dto.DoctorId.Value)
                     ?? throw new InvalidOperationException($"El doctor con ID {dto.DoctorId} no existe.");
 
-                if (!doctor.Especialidad.Equals(dto.Especialidad, StringComparison.OrdinalIgnoreCase))
+                if (doctor.EspecialidadId != dto.EspecialidadId)
                     throw new InvalidOperationException(
-                        $"El doctor no es especialista en '{dto.Especialidad}'. Su especialidad es '{doctor.Especialidad}'.");
+                        "El doctor seleccionado no pertenece a la especialidad solicitada.");
             }
+
+            var especialidad = await _especialidadRepository.GetByIdAsync(dto.EspecialidadId)
+                ?? throw new InvalidOperationException($"La especialidad con ID {dto.EspecialidadId} no existe.");
 
             if (string.IsNullOrEmpty(userId))
                 throw new UnauthorizedAccessException("No se pudo identificar el usuario actual.");
@@ -190,7 +195,7 @@ namespace turnero_medico_backend.Services
             {
                 PacienteId              = dto.PacienteId,
                 DoctorId                = dto.DoctorId,
-                Especialidad            = dto.Especialidad,
+                EspecialidadId          = dto.EspecialidadId,
                 Motivo                  = dto.Motivo,
                 Estado                  = EstadoTurno.SolicitudPendiente,
                 CreatedByUserId         = userId,
@@ -283,10 +288,14 @@ namespace turnero_medico_backend.Services
                 ?? throw new InvalidOperationException($"El doctor con ID {doctorId} no existe.");
 
             // Validar que la especialidad del doctor coincida con la del turno
-            if (!doctor.Especialidad.Equals(turno.Especialidad, StringComparison.OrdinalIgnoreCase))
+            if (doctor.EspecialidadId != turno.EspecialidadId)
+            {
+                var espDoctor = await _especialidadRepository.GetByIdAsync(doctor.EspecialidadId);
+                var espTurno  = await _especialidadRepository.GetByIdAsync(turno.EspecialidadId);
                 throw new InvalidOperationException(
-                    $"El doctor '{doctor.Nombre} {doctor.Apellido}' es especialista en '{doctor.Especialidad}', "
-                    + $"pero el turno requiere '{turno.Especialidad}'.");
+                    $"El doctor '{doctor.Nombre} {doctor.Apellido}' es especialista en '{espDoctor?.Nombre}', "
+                    + $"pero el turno requiere '{espTurno?.Nombre}'.");
+            }
 
             if (dto.FechaHora <= DateTime.UtcNow)
                 throw new InvalidOperationException("La fecha y hora del turno debe ser en el futuro.");

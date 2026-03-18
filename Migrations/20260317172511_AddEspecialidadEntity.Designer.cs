@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using turnero_medico_backend.Data;
@@ -12,9 +13,11 @@ using turnero_medico_backend.Data;
 namespace turnero_medico_backend.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260317172511_AddEspecialidadEntity")]
+    partial class AddEspecialidadEntity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -465,8 +468,9 @@ namespace turnero_medico_backend.Migrations
                     b.Property<int?>("DoctorId")
                         .HasColumnType("integer");
 
-                    b.Property<int>("EspecialidadId")
-                        .HasColumnType("integer");
+                    b.Property<string>("Especialidad")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("Estado")
                         .IsRequired()
@@ -514,8 +518,6 @@ namespace turnero_medico_backend.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("DoctorId");
-
-                    b.HasIndex("EspecialidadId");
 
                     b.HasIndex("Estado");
 
@@ -631,12 +633,6 @@ namespace turnero_medico_backend.Migrations
                         .HasForeignKey("DoctorId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("turnero_medico_backend.Models.Entities.Especialidad", "Especialidad")
-                        .WithMany()
-                        .HasForeignKey("EspecialidadId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("turnero_medico_backend.Models.Entities.ObraSocial", "ObraSocial")
                         .WithMany()
                         .HasForeignKey("ObraSocialId")
@@ -649,8 +645,6 @@ namespace turnero_medico_backend.Migrations
                         .IsRequired();
 
                     b.Navigation("Doctor");
-
-                    b.Navigation("Especialidad");
 
                     b.Navigation("ObraSocial");
 

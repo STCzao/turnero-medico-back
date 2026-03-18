@@ -16,6 +16,7 @@ namespace turnero_medico_backend.Data
         public DbSet<Turno> Turnos { get; set; }
         public DbSet<ObraSocial> ObrasSociales { get; set; }
         public DbSet<Horario> Horarios { get; set; }
+        public DbSet<Especialidad> Especialidades { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -52,11 +53,27 @@ namespace turnero_medico_backend.Data
             .OnDelete(DeleteBehavior.Restrict)
             .IsRequired(false);
 
-            // ObraSocial: especialidades y planes como JSONB
-            modelBuilder.Entity<ObraSocial>()
-                .Property(o => o.Especialidades)
-                .HasColumnType("jsonb");
+            // Relación: Turno-Especialidad (muchos-a-uno)
+            modelBuilder.Entity<Turno>()
+                .HasOne(t => t.Especialidad)
+                .WithMany()
+                .HasForeignKey(t => t.EspecialidadId)
+                .OnDelete(DeleteBehavior.Restrict);
 
+            // Doctor → Especialidad (muchos-a-uno)
+            modelBuilder.Entity<Doctor>()
+                .HasOne(d => d.Especialidad)
+                .WithMany(e => e.Doctores)
+                .HasForeignKey(d => d.EspecialidadId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // ObraSocial ↔ Especialidad (muchos-a-muchos)
+            modelBuilder.Entity<ObraSocial>()
+                .HasMany(o => o.Especialidades)
+                .WithMany(e => e.ObrasSociales)
+                .UsingEntity(j => j.ToTable("ObraSocialEspecialidad"));
+
+            // ObraSocial: planes como JSONB
             modelBuilder.Entity<ObraSocial>()
                 .Property(o => o.Planes)
                 .HasColumnType("jsonb");

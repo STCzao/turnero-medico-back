@@ -10,7 +10,7 @@ namespace turnero_medico_backend.DTOs.ObraSocialDTOs
 
         [Required(ErrorMessage = "Debe indicar al menos una especialidad")]
         [MinLength(1, ErrorMessage = "Debe indicar al menos una especialidad")]
-        public List<string> Especialidades { get; set; } = [];
+        public List<int> EspecialidadIds { get; set; } = [];
 
         // Planes disponibles. Opcional.
         public List<string> Planes { get; set; } = [];
