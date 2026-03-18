@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql.EntityFrameworkCore.PostgreSQL;
+using Serilog;
 using System.Text;
 using System.Threading.RateLimiting;
 using turnero_medico_backend.Data;
@@ -15,7 +16,23 @@ using turnero_medico_backend.Repositories.Interfaces;
 using turnero_medico_backend.Services;
 using turnero_medico_backend.Services.Interfaces;
 
+// ─── Configurar Serilog antes del host ───────────────────────────────────────
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .WriteTo.Console(outputTemplate:
+        "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+    .CreateBootstrapLogger();
+
 var builder = WebApplication.CreateBuilder(args);
+
+// ─── Serilog como provider de logging ────────────────────────────────────────
+builder.Host.UseSerilog((ctx, services, config) => config
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .Enrich.WithProperty("Application", "turnero-medico-backend")
+    .WriteTo.Console(outputTemplate:
+        "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}"));
 
 // Agregar servicios al contenedor
 builder.Services.AddControllers();
@@ -27,6 +44,17 @@ builder.Services.AddAutoMapper(typeof(AutoMapperProfile).Assembly);
 
 // ← HttpContextAccessor para acceder a User actual en servicios
 builder.Services.AddHttpContextAccessor();
+
+// ← MemoryCache para catálogos de lectura frecuente (Especialidades, ObrasSociales)
+builder.Services.AddMemoryCache();
+
+// ← API Versioning
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new Asp.Versioning.ApiVersion(1, 0);
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ReportApiVersions = true;
+});
 
 // ── Leer DATABASE_URL (Render) o ConnectionStrings__DefaultConnection ──
 var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL")
@@ -106,8 +134,13 @@ builder.Services.AddScoped<IObraSocialService, ObraSocialService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IHorarioService, HorarioService>();
 builder.Services.AddScoped<IEspecialidadService, EspecialidadService>();
+builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<SeedDataService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+// Health Checks
+builder.Services.AddHealthChecks()
+    .AddCheck<DatabaseHealthCheck>("database", tags: ["db"]);
 
 // Configurar CORS
 builder.Services.AddCors(options =>
@@ -162,6 +195,9 @@ var app = builder.Build();
 // ← PRIMERO: Middleware para manejar excepciones globales
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
+// ← Serilog request logging (después del exception middleware)
+app.UseSerilogRequestLogging();
+
 // Configurar el pipeline HTTP
 if (app.Environment.IsDevelopment())
 {
@@ -182,6 +218,15 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHealthChecks("/healthz", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    ResponseWriter = async (ctx, rpt) =>
+    {
+        ctx.Response.ContentType = "application/json";
+        var result = System.Text.Json.JsonSerializer.Serialize(new { status = rpt.Status.ToString() });
+        await ctx.Response.WriteAsync(result);
+    }
+});
 
 // ← Aplicar migraciones automáticamente en producción
 if (app.Environment.IsProduction())

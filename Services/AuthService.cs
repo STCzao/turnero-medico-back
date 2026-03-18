@@ -16,7 +16,8 @@ namespace turnero_medico_backend.Services
         IConfiguration configuration,
         IRepository<Paciente> pacienteRepository,
         IRepository<Doctor> doctorRepository,
-        ApplicationDbContext dbContext) : IAuthService
+        ApplicationDbContext dbContext,
+        IAuditService auditService) : IAuthService
     {
         private readonly UserManager<ApplicationUser> _userManager = userManager;
         private readonly RoleManager<ApplicationRole> _roleManager = roleManager;
@@ -24,6 +25,7 @@ namespace turnero_medico_backend.Services
         private readonly IRepository<Paciente> _pacienteRepository = pacienteRepository;
         private readonly IRepository<Doctor> _doctorRepository = doctorRepository;
         private readonly ApplicationDbContext _dbContext = dbContext;
+        private readonly IAuditService _auditService = auditService;
 
         // ─────────────────────────────────────────────────────────────
         // REGISTRO PACIENTE (auto-registro público)
@@ -120,6 +122,7 @@ namespace turnero_medico_backend.Services
                 await _userManager.UpdateAsync(newUser);
 
                 await transaction.CommitAsync();
+                await _auditService.LogAsync(AuditAccion.Registro, "ApplicationUser", newUser.Id);
                 return (true, "Paciente registrado exitosamente. Ya puedes agendar turnos.");
             }
             catch
@@ -215,6 +218,7 @@ namespace turnero_medico_backend.Services
                 await _userManager.UpdateAsync(newUser);
 
                 await transaction.CommitAsync();
+                await _auditService.LogAsync(AuditAccion.Registro, "ApplicationUser", newUser.Id);
                 return (true, "Doctor registrado exitosamente");
             }
             catch
@@ -261,6 +265,7 @@ namespace turnero_medico_backend.Services
                 await _userManager.AddToRoleAsync(newUser, "Secretaria");
 
                 await transaction.CommitAsync();
+                await _auditService.LogAsync(AuditAccion.Registro, "ApplicationUser", newUser.Id);
                 return (true, "Secretaria registrada exitosamente");
             }
             catch
@@ -290,6 +295,7 @@ namespace turnero_medico_backend.Services
                 var roles = await _userManager.GetRolesAsync(user);
                 var token = GenerateJwtToken(user, roles);
 
+                await _auditService.LogAsync(AuditAccion.Login, "ApplicationUser", user.Id);
                 return (true, token, "Login exitoso");
             }
             catch (Exception)

@@ -11,11 +11,13 @@ namespace turnero_medico_backend.Services
         IDoctorRepository _repository,
         IRepository<Especialidad> _especialidadRepository,
         IMapper _mapper,
-        ICurrentUserService _currentUserService
+        ICurrentUserService _currentUserService,
+        IAuditService _auditService
     ) : IDoctorService
     {
         public async Task<PagedResultDto<DoctorReadDto>> GetAllPagedAsync(int page, int pageSize)
         {
+            pageSize = Math.Clamp(pageSize, 1, 100);
             var (items, total) = await _repository.GetAllWithEspecialidadPagedAsync(page, pageSize);
             return new PagedResultDto<DoctorReadDto>
             {
@@ -58,6 +60,7 @@ namespace turnero_medico_backend.Services
 
             var doctor = _mapper.Map<Doctor>(dto);
             var created = await _repository.AddAsync(doctor);
+            await _auditService.LogAsync(AuditAccion.Crear, "Doctor", created.Id.ToString());
             var createdWithNav = await _repository.GetByIdWithEspecialidadAsync(created.Id);
             return _mapper.Map<DoctorReadDto>(createdWithNav!);
         }
@@ -72,19 +75,20 @@ namespace turnero_medico_backend.Services
 
             _mapper.Map(dto, doctor);
             await _repository.UpdateAsync(doctor);
+            await _auditService.LogAsync(AuditAccion.Actualizar, "Doctor", id.ToString());
             var updatedWithNav = await _repository.GetByIdWithEspecialidadAsync(id);
             return _mapper.Map<DoctorReadDto>(updatedWithNav!);
         }
 
         public async Task<bool> DeleteAsync(int id)
         {
-            return await _repository.DeleteAsync(id);
+            var deleted = await _repository.DeleteAsync(id);
+            if (deleted)
+                await _auditService.LogAsync(AuditAccion.Eliminar, "Doctor", id.ToString());
+            return deleted;
         }
 
         public async Task<bool> ExistAsync(int id)
-        {
-            var doctor = await _repository.GetByIdAsync(id);
-            return doctor != null;
-        }
+            => await _repository.ExistAsync(id);
     }
 }

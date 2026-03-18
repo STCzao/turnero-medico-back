@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using turnero_medico_backend.DTOs.Common;
@@ -7,6 +8,7 @@ using turnero_medico_backend.Services.Interfaces;
 
 namespace turnero_medico_backend.Controllers
 {
+    [ApiVersion("1.0")]
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
@@ -93,9 +95,9 @@ namespace turnero_medico_backend.Controllers
         // Dependientes del paciente autenticado
         [HttpGet("mis-dependientes")]
         [Authorize(Roles = "Paciente")]
-        public async Task<ActionResult<IEnumerable<PacienteReadDto>>> GetMisDependientes()
+        public async Task<ActionResult<PagedResultDto<PacienteReadDto>>> GetMisDependientes([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {
-            var dependientes = await _service.GetMisDependientesAsync();
+            var dependientes = await _service.GetMisDependientesAsync(page, pageSize);
             return Ok(dependientes);
         }
 
@@ -109,6 +111,20 @@ namespace turnero_medico_backend.Controllers
 
             var dependiente = await _service.CreateDependienteAsync(dto);
             return CreatedAtAction(nameof(GetById), new { id = dependiente.Id }, dependiente);
+        }
+
+        /// <summary>
+        /// Exporta todos los datos personales del paciente autenticado (GDPR).
+        /// </summary>
+        [HttpGet("me/export")]
+        [Authorize(Roles = "Paciente")]
+        public async Task<ActionResult<PacienteExportDto>> ExportarMisDatos()
+        {
+            var export = await _service.ExportarMisDatosAsync();
+            if (export == null)
+                return NotFound(new { mensaje = "No se encontró un registro de paciente asociado a tu usuario." });
+
+            return Ok(export);
         }
     }
 }

@@ -13,6 +13,7 @@ namespace turnero_medico_backend.Repositories
         public async Task<Turno?> GetByIdWithDetailsAsync(int id)
         {
             return await _ctx.Turnos
+                .AsNoTracking()
                 .Include(t => t.Paciente)
                 .Include(t => t.Doctor)
                 .Include(t => t.ObraSocial)
@@ -23,6 +24,7 @@ namespace turnero_medico_backend.Repositories
         public async Task<IEnumerable<Turno>> FindWithDetailsAsync(Expression<Func<Turno, bool>> predicate)
         {
             return await _ctx.Turnos
+                .AsNoTracking()
                 .Include(t => t.Paciente)
                 .Include(t => t.Doctor)
                 .Include(t => t.ObraSocial)
@@ -34,6 +36,7 @@ namespace turnero_medico_backend.Repositories
         public async Task<(IEnumerable<Turno> Items, int Total)> GetAllWithDetailsPagedAsync(int page, int pageSize, string? estado = null)
         {
             var query = _ctx.Turnos
+                .AsNoTracking()
                 .Include(t => t.Paciente)
                 .Include(t => t.Doctor)
                 .Include(t => t.ObraSocial)
@@ -45,6 +48,7 @@ namespace turnero_medico_backend.Repositories
 
             var total = await query.CountAsync();
             var items = await query
+                .OrderByDescending(t => t.CreatedAt)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();

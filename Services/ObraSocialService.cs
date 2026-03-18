@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using turnero_medico_backend.Data;
 using turnero_medico_backend.DTOs.Common;
 using turnero_medico_backend.DTOs.ObraSocialDTOs;
@@ -10,24 +11,43 @@ namespace turnero_medico_backend.Services
 {
     public class ObraSocialService(
         ApplicationDbContext context,
-        IMapper mapper) : IObraSocialService
+        IMapper mapper,
+        IMemoryCache cache,
+        IAuditService auditService) : IObraSocialService
     {
         private readonly ApplicationDbContext _context = context;
         private readonly IMapper _mapper = mapper;
+        private readonly IMemoryCache _cache = cache;
+        private readonly IAuditService _auditService = auditService;
 
-        public async Task<PagedResultDto<ObraSocialReadDto>> GetAllPagedAsync(int page, int pageSize)
+        private const string CacheKey = "obras-sociales:all";
+        private static readonly TimeSpan Ttl = TimeSpan.FromMinutes(60);
+
+        // Obtiene la lista completa desde caché o DB
+        private async Task<List<ObraSocialReadDto>> GetCachedAllAsync()
         {
-            var total = await _context.ObrasSociales.CountAsync();
+            if (_cache.TryGetValue(CacheKey, out List<ObraSocialReadDto>? cached) && cached != null)
+                return cached;
+
             var items = await _context.ObrasSociales
                 .Include(o => o.Especialidades)
                 .OrderBy(o => o.Id)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
+                .AsNoTracking()
                 .ToListAsync();
+
+            var result = items.Select(o => _mapper.Map<ObraSocialReadDto>(o)).ToList();
+            _cache.Set(CacheKey, result, Ttl);
+            return result;
+        }
+
+        public async Task<PagedResultDto<ObraSocialReadDto>> GetAllPagedAsync(int page, int pageSize)
+        {
+            pageSize = Math.Clamp(pageSize, 1, 100);
+            var all = await GetCachedAllAsync();
             return new PagedResultDto<ObraSocialReadDto>
             {
-                Items = items.Select(o => _mapper.Map<ObraSocialReadDto>(o)),
-                Total = total,
+                Items = all.Skip((page - 1) * pageSize).Take(pageSize),
+                Total = all.Count,
                 Page = page,
                 PageSize = pageSize
             };
@@ -35,10 +55,8 @@ namespace turnero_medico_backend.Services
 
         public async Task<ObraSocialReadDto?> GetByIdAsync(int id)
         {
-            var obra = await _context.ObrasSociales
-                .Include(o => o.Especialidades)
-                .FirstOrDefaultAsync(o => o.Id == id);
-            return obra != null ? _mapper.Map<ObraSocialReadDto>(obra) : null;
+            var all = await GetCachedAllAsync();
+            return all.FirstOrDefault(o => o.Id == id);
         }
 
         public async Task<ObraSocialReadDto> CreateAsync(ObraSocialCreateDto dto)
@@ -64,6 +82,8 @@ namespace turnero_medico_backend.Services
 
             _context.ObrasSociales.Add(obra);
             await _context.SaveChangesAsync();
+            _cache.Remove(CacheKey);
+            await _auditService.LogAsync(AuditAccion.Crear, "ObraSocial", obra.Id.ToString());
             return _mapper.Map<ObraSocialReadDto>(obra);
         }
 
@@ -87,6 +107,8 @@ namespace turnero_medico_backend.Services
             obra.Especialidades = especialidades;
 
             await _context.SaveChangesAsync();
+            _cache.Remove(CacheKey);
+            await _auditService.LogAsync(AuditAccion.Actualizar, "ObraSocial", id.ToString());
             return _mapper.Map<ObraSocialReadDto>(obra);
         }
 
@@ -96,6 +118,8 @@ namespace turnero_medico_backend.Services
             if (obra == null) return false;
             _context.ObrasSociales.Remove(obra);
             await _context.SaveChangesAsync();
+            _cache.Remove(CacheKey);
+            await _auditService.LogAsync(AuditAccion.Eliminar, "ObraSocial", id.ToString());
             return true;
         }
     }

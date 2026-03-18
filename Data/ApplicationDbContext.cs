@@ -17,6 +17,7 @@ namespace turnero_medico_backend.Data
         public DbSet<ObraSocial> ObrasSociales { get; set; }
         public DbSet<Horario> Horarios { get; set; }
         public DbSet<Especialidad> Especialidades { get; set; }
+        public DbSet<AuditLog> AuditLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -140,6 +141,14 @@ namespace turnero_medico_backend.Data
 
             modelBuilder.Entity<Paciente>()
                 .HasIndex(p => p.ResponsableId);
+
+            // AuditLog: índices para consultas por usuario y por fecha
+            modelBuilder.Entity<AuditLog>()
+                .HasIndex(a => a.UserId);
+            modelBuilder.Entity<AuditLog>()
+                .HasIndex(a => new { a.Entidad, a.EntidadId });
+            modelBuilder.Entity<AuditLog>()
+                .HasIndex(a => a.FechaHora);
 
             modelBuilder.Entity<Horario>()
                 .HasIndex(h => new { h.DoctorId, h.DiaSemana });

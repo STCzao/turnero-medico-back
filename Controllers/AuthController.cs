@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -6,6 +7,7 @@ using turnero_medico_backend.Services.Interfaces;
 
 namespace turnero_medico_backend.Controllers
 {
+    [ApiVersion("1.0")]
     [ApiController]
     [Route("api/[controller]")]
     public class AuthController(IAuthService authService) : ControllerBase
