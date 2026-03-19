@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using turnero_medico_backend.Data;
@@ -12,9 +13,11 @@ using turnero_medico_backend.Data;
 namespace turnero_medico_backend.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260318041726_RemoveApplicationUserRol")]
+    partial class RemoveApplicationUserRol
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -233,12 +236,6 @@ namespace turnero_medico_backend.Migrations
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("boolean");
 
-                    b.Property<DateTime?>("RefreshTokenExpiry")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("RefreshTokenHash")
-                        .HasColumnType("text");
-
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
 
@@ -259,55 +256,6 @@ namespace turnero_medico_backend.Migrations
                         .HasDatabaseName("UserNameIndex");
 
                     b.ToTable("AspNetUsers", (string)null);
-                });
-
-            modelBuilder.Entity("turnero_medico_backend.Models.Entities.AuditLog", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<string>("Accion")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Entidad")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("EntidadId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("FechaHora")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("IpCliente")
-                        .HasColumnType("text");
-
-                    b.Property<string>("UserId")
-                        .HasColumnType("text");
-
-                    b.Property<string>("UsuarioNombre")
-                        .HasColumnType("text");
-
-                    b.Property<string>("ValoresAnteriores")
-                        .HasColumnType("text");
-
-                    b.Property<string>("ValoresNuevos")
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("FechaHora");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("Entidad", "EntidadId");
-
-                    b.ToTable("AuditLogs");
                 });
 
             modelBuilder.Entity("turnero_medico_backend.Models.Entities.Doctor", b =>

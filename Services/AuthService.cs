@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using turnero_medico_backend.Data;
 using turnero_medico_backend.Models.Entities;
@@ -16,7 +17,8 @@ namespace turnero_medico_backend.Services
         IConfiguration configuration,
         IRepository<Paciente> pacienteRepository,
         IRepository<Doctor> doctorRepository,
-        ApplicationDbContext dbContext) : IAuthService
+        ApplicationDbContext dbContext,
+        IAuditService auditService) : IAuthService
     {
         private readonly UserManager<ApplicationUser> _userManager = userManager;
         private readonly RoleManager<ApplicationRole> _roleManager = roleManager;
@@ -24,6 +26,7 @@ namespace turnero_medico_backend.Services
         private readonly IRepository<Paciente> _pacienteRepository = pacienteRepository;
         private readonly IRepository<Doctor> _doctorRepository = doctorRepository;
         private readonly ApplicationDbContext _dbContext = dbContext;
+        private readonly IAuditService _auditService = auditService;
 
         // ─────────────────────────────────────────────────────────────
         // REGISTRO PACIENTE (auto-registro público)
@@ -68,7 +71,6 @@ namespace turnero_medico_backend.Services
                     UserName = email,
                     Nombre = nombre,
                     Apellido = apellido,
-                    Rol = "Paciente",
                     FechaRegistro = DateTime.UtcNow
                 };
 
@@ -121,6 +123,7 @@ namespace turnero_medico_backend.Services
                 await _userManager.UpdateAsync(newUser);
 
                 await transaction.CommitAsync();
+                await _auditService.LogAsync(AuditAccion.Registro, "ApplicationUser", newUser.Id);
                 return (true, "Paciente registrado exitosamente. Ya puedes agendar turnos.");
             }
             catch
@@ -168,7 +171,6 @@ namespace turnero_medico_backend.Services
                     UserName = email,
                     Nombre = nombre,
                     Apellido = apellido,
-                    Rol = "Doctor",
                     FechaRegistro = DateTime.UtcNow
                 };
 
@@ -217,6 +219,7 @@ namespace turnero_medico_backend.Services
                 await _userManager.UpdateAsync(newUser);
 
                 await transaction.CommitAsync();
+                await _auditService.LogAsync(AuditAccion.Registro, "ApplicationUser", newUser.Id);
                 return (true, "Doctor registrado exitosamente");
             }
             catch
@@ -248,7 +251,6 @@ namespace turnero_medico_backend.Services
                     UserName = email,
                     Nombre = nombre,
                     Apellido = apellido,
-                    Rol = "Secretaria",
                     FechaRegistro = DateTime.UtcNow
                 };
 
@@ -264,6 +266,7 @@ namespace turnero_medico_backend.Services
                 await _userManager.AddToRoleAsync(newUser, "Secretaria");
 
                 await transaction.CommitAsync();
+                await _auditService.LogAsync(AuditAccion.Registro, "ApplicationUser", newUser.Id);
                 return (true, "Secretaria registrada exitosamente");
             }
             catch
@@ -275,30 +278,66 @@ namespace turnero_medico_backend.Services
 
         /// Autentica un usuario y devuelve un token JWT
 
-        public async Task<(bool Success, string Token, string Message)> LoginAsync(string email, string password)
+        public async Task<(bool Success, string Token, string RefreshToken, string Message)> LoginAsync(string email, string password)
         {
             try
             {
                 // Buscar el usuario
                 var user = await _userManager.FindByEmailAsync(email);
                 if (user == null)
-                    return (false, string.Empty, "Credenciales inválidas");
+                    return (false, string.Empty, string.Empty, "Credenciales inválidas");
 
                 // Verificar contraseña
                 var isPasswordCorrect = await _userManager.CheckPasswordAsync(user, password);
                 if (!isPasswordCorrect)
-                    return (false, string.Empty, "Credenciales inválidas");
+                    return (false, string.Empty, string.Empty, "Credenciales inválidas");
 
-                // Generar token JWT
+                // Generar tokens
                 var roles = await _userManager.GetRolesAsync(user);
                 var token = GenerateJwtToken(user, roles);
+                var refreshToken = GenerateRefreshToken();
 
-                return (true, token, "Login exitoso");
+                user.RefreshTokenHash   = HashToken(refreshToken);
+                user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(GetRefreshTokenExpirationDays());
+                await _userManager.UpdateAsync(user);
+
+                await _auditService.LogAsync(AuditAccion.Login, "ApplicationUser", user.Id);
+                return (true, token, refreshToken, "Login exitoso");
             }
             catch (Exception)
             {
-                return (false, string.Empty, "Error interno al intentar iniciar sesión. Intente nuevamente.");
+                return (false, string.Empty, string.Empty, "Error interno al intentar iniciar sesión. Intente nuevamente.");
             }
+        }
+
+        /// Rota el par access+refresh. El token anterior queda inválido.
+
+        public async Task<(bool Success, string Token, string RefreshToken, string Message)> RefreshTokenAsync(
+            string userId, string refreshToken)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user?.RefreshTokenHash is null || user.RefreshTokenExpiry is null)
+                return (false, string.Empty, string.Empty, "Token inválido o expirado.");
+
+            if (user.RefreshTokenExpiry < DateTime.UtcNow)
+                return (false, string.Empty, string.Empty, "El refresh token ha expirado. Iniciá sesión nuevamente.");
+
+            var providedHashBytes = Encoding.UTF8.GetBytes(HashToken(refreshToken));
+            var storedHashBytes   = Encoding.UTF8.GetBytes(user.RefreshTokenHash);
+
+            if (!CryptographicOperations.FixedTimeEquals(providedHashBytes, storedHashBytes))
+                return (false, string.Empty, string.Empty, "Token inválido o expirado.");
+
+            // Rotar: nuevo access + nuevo refresh (invalidar el anterior)
+            var roles           = await _userManager.GetRolesAsync(user);
+            var newAccessToken  = GenerateJwtToken(user, roles);
+            var newRefreshToken = GenerateRefreshToken();
+
+            user.RefreshTokenHash   = HashToken(newRefreshToken);
+            user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(GetRefreshTokenExpirationDays());
+            await _userManager.UpdateAsync(user);
+
+            return (true, newAccessToken, newRefreshToken, "Token renovado exitosamente.");
         }
 
         /// Genera un token JWT firmado para el usuario
@@ -344,5 +383,20 @@ namespace turnero_medico_backend.Services
                 await _roleManager.CreateAsync(new ApplicationRole(roleName) { Descripcion = $"Rol de {roleName}" });
             }
         }
+
+        private int GetRefreshTokenExpirationDays()
+            => int.TryParse(_configuration["Jwt:RefreshTokenExpirationDays"], out var days) && days > 0 ? days : 30;
+
+        // Genera un token opaco de 32 bytes criptográficamente seguro.
+        private static string GenerateRefreshToken()
+        {
+            var bytes = new byte[32];
+            RandomNumberGenerator.Fill(bytes);
+            return Convert.ToBase64String(bytes);
+        }
+
+        // Devuelve el SHA-256 hexadecimal del token para almacenamiento seguro.
+        private static string HashToken(string token)
+            => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
     }
 }

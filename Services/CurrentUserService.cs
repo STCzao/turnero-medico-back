@@ -31,5 +31,11 @@ namespace turnero_medico_backend.Services
         {
             return _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.Email)?.Value;
         }
+
+        // Obtiene el nombre completo del usuario actual
+        public string? GetUserName()
+        {
+            return _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.Name)?.Value;
+        }
     }
 }

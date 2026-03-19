@@ -17,6 +17,7 @@ namespace turnero_medico_backend.Data
         public DbSet<ObraSocial> ObrasSociales { get; set; }
         public DbSet<Horario> Horarios { get; set; }
         public DbSet<Especialidad> Especialidades { get; set; }
+        public DbSet<AuditLog> AuditLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -99,6 +100,29 @@ namespace turnero_medico_backend.Data
                 .HasForeignKey(h => h.DoctorId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            // Paciente.ResponsableId → AspNetUsers (dependiente vinculado a su responsable)
+            modelBuilder.Entity<Paciente>()
+                .HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(p => p.ResponsableId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .IsRequired(false);
+
+            // Turno.CreatedByUserId → AspNetUsers (quién solicitó el turno)
+            modelBuilder.Entity<Turno>()
+                .HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(t => t.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Turno.ConfirmadaPorId → AspNetUsers (secretaria/admin que gestionó)
+            modelBuilder.Entity<Turno>()
+                .HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(t => t.ConfirmadaPorId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .IsRequired(false);
+
             // Índices para queries frecuentes
             modelBuilder.Entity<Turno>()
                 .HasIndex(t => t.Estado);
@@ -117,6 +141,14 @@ namespace turnero_medico_backend.Data
 
             modelBuilder.Entity<Paciente>()
                 .HasIndex(p => p.ResponsableId);
+
+            // AuditLog: índices para consultas por usuario y por fecha
+            modelBuilder.Entity<AuditLog>()
+                .HasIndex(a => a.UserId);
+            modelBuilder.Entity<AuditLog>()
+                .HasIndex(a => new { a.Entidad, a.EntidadId });
+            modelBuilder.Entity<AuditLog>()
+                .HasIndex(a => a.FechaHora);
 
             modelBuilder.Entity<Horario>()
                 .HasIndex(h => new { h.DoctorId, h.DiaSemana });

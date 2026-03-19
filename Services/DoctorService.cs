@@ -1,4 +1,6 @@
 using AutoMapper;
+using Microsoft.EntityFrameworkCore;
+using turnero_medico_backend.Data;
 using turnero_medico_backend.DTOs.Common;
 using turnero_medico_backend.DTOs.DoctorDTOs;
 using turnero_medico_backend.Models.Entities;
@@ -8,55 +10,21 @@ using turnero_medico_backend.Services.Interfaces;
 namespace turnero_medico_backend.Services
 {
     public class DoctorService(
-        IRepository<Doctor> _repository,
+        IDoctorRepository _repository,
         IRepository<Especialidad> _especialidadRepository,
         IMapper _mapper,
-        ICurrentUserService _currentUserService
+        ICurrentUserService _currentUserService,
+        IAuditService _auditService,
+        ApplicationDbContext _dbContext
     ) : IDoctorService
     {
-        private async Task<string> GetEspecialidadNombreAsync(int especialidadId)
-        {
-            var esp = await _especialidadRepository.GetByIdAsync(especialidadId);
-            return esp?.Nombre ?? string.Empty;
-        }
-
-        private async Task<Dictionary<int, string>> BuildEspecialidadMapAsync(IEnumerable<Doctor> doctors)
-        {
-            var ids = doctors.Select(d => d.EspecialidadId).Distinct().ToList();
-            var especialidades = await _especialidadRepository.FindAsync(e => ids.Contains(e.Id));
-            return especialidades.ToDictionary(e => e.Id, e => e.Nombre);
-        }
-
-        public async Task<IEnumerable<DoctorReadDto>> GetAllAsync()
-        {
-            if (!_currentUserService.IsAdmin())
-                throw new UnauthorizedAccessException("No tienes permisos para ver el listado de doctores.");
-
-            var doctors = await _repository.GetAllAsync();
-            var espMap = await BuildEspecialidadMapAsync(doctors);
-            return doctors.Select(d =>
-            {
-                var dto = _mapper.Map<DoctorReadDto>(d);
-                dto.EspecialidadNombre = espMap.TryGetValue(d.EspecialidadId, out var nombre) ? nombre : string.Empty;
-                return dto;
-            });
-        }
-
         public async Task<PagedResultDto<DoctorReadDto>> GetAllPagedAsync(int page, int pageSize)
         {
-            if (!_currentUserService.IsAdmin())
-                throw new UnauthorizedAccessException("No tienes permisos para ver el listado de doctores.");
-
-            var (items, total) = await _repository.GetAllPagedAsync(page, pageSize);
-            var espMap = await BuildEspecialidadMapAsync(items);
+            pageSize = Math.Clamp(pageSize, 1, 100);
+            var (items, total) = await _repository.GetAllWithEspecialidadPagedAsync(page, pageSize);
             return new PagedResultDto<DoctorReadDto>
             {
-                Items = items.Select(d =>
-                {
-                    var dto = _mapper.Map<DoctorReadDto>(d);
-                    dto.EspecialidadNombre = espMap.TryGetValue(d.EspecialidadId, out var nombre) ? nombre : string.Empty;
-                    return dto;
-                }),
+                Items = _mapper.Map<IEnumerable<DoctorReadDto>>(items),
                 Total = total,
                 Page = page,
                 PageSize = pageSize
@@ -65,23 +33,15 @@ namespace turnero_medico_backend.Services
 
         public async Task<IEnumerable<DoctorReadDto>> GetByEspecialidadAsync(int especialidadId)
         {
-            var doctors = await _repository.FindAsync(d => d.EspecialidadId == especialidadId);
-            var espNombre = await GetEspecialidadNombreAsync(especialidadId);
-            return doctors.Select(d =>
-            {
-                var dto = _mapper.Map<DoctorReadDto>(d);
-                dto.EspecialidadNombre = espNombre;
-                return dto;
-            });
+            var doctors = await _repository.FindWithEspecialidadAsync(d => d.EspecialidadId == especialidadId);
+            return _mapper.Map<IEnumerable<DoctorReadDto>>(doctors);
         }
 
         public async Task<DoctorReadDto?> GetByIdAsync(int id)
         {
-            var doctor = await _repository.GetByIdAsync(id);
+            var doctor = await _repository.GetByIdWithEspecialidadAsync(id);
             if (doctor == null) return null;
-            var dto = _mapper.Map<DoctorReadDto>(doctor);
-            dto.EspecialidadNombre = await GetEspecialidadNombreAsync(doctor.EspecialidadId);
-            return dto;
+            return _mapper.Map<DoctorReadDto>(doctor);
         }
 
         public async Task<DoctorReadDto?> GetMyProfileAsync()
@@ -90,53 +50,53 @@ namespace turnero_medico_backend.Services
             if (string.IsNullOrEmpty(userId))
                 throw new UnauthorizedAccessException("No se pudo obtener el ID del usuario autenticado");
 
-            var doctores = await _repository.FindAsync(d => d.UserId == userId);
-            var doctor = doctores.FirstOrDefault();
-
-            if (doctor == null)
-                return null;
-
-            var dto = _mapper.Map<DoctorReadDto>(doctor);
-            dto.EspecialidadNombre = await GetEspecialidadNombreAsync(doctor.EspecialidadId);
-            return dto;
+            var doctors = await _repository.FindWithEspecialidadAsync(d => d.UserId == userId);
+            var doctor = doctors.FirstOrDefault();
+            if (doctor == null) return null;
+            return _mapper.Map<DoctorReadDto>(doctor);
         }
 
         public async Task<DoctorReadDto> CreateAsync(DoctorCreateDto dto)
         {
-            var especialidad = await _especialidadRepository.GetByIdAsync(dto.EspecialidadId)
+            _ = await _especialidadRepository.GetByIdAsync(dto.EspecialidadId)
                 ?? throw new InvalidOperationException($"La especialidad con ID {dto.EspecialidadId} no existe.");
 
             var doctor = _mapper.Map<Doctor>(dto);
-            var createdDoctor = await _repository.AddAsync(doctor);
-            var result = _mapper.Map<DoctorReadDto>(createdDoctor);
-            result.EspecialidadNombre = especialidad.Nombre;
-            return result;
+            var created = await _repository.AddAsync(doctor);
+            await _auditService.LogAsync(AuditAccion.Crear, "Doctor", created.Id.ToString());
+            var createdWithNav = await _repository.GetByIdWithEspecialidadAsync(created.Id);
+            return _mapper.Map<DoctorReadDto>(createdWithNav!);
         }
 
         public async Task<DoctorReadDto?> UpdateAsync(int id, DoctorUpdateDto dto)
         {
-            var doctor = await _repository.GetByIdAsync(id);
+            var doctor = await _repository.GetByIdWithEspecialidadAsync(id);
             if (doctor == null) return null;
 
-            var especialidad = await _especialidadRepository.GetByIdAsync(dto.EspecialidadId)
+            _ = await _especialidadRepository.GetByIdAsync(dto.EspecialidadId)
                 ?? throw new InvalidOperationException($"La especialidad con ID {dto.EspecialidadId} no existe.");
 
             _mapper.Map(dto, doctor);
             await _repository.UpdateAsync(doctor);
-            var result = _mapper.Map<DoctorReadDto>(doctor);
-            result.EspecialidadNombre = especialidad.Nombre;
-            return result;
+            await _auditService.LogAsync(AuditAccion.Actualizar, "Doctor", id.ToString());
+            var updatedWithNav = await _repository.GetByIdWithEspecialidadAsync(id);
+            return _mapper.Map<DoctorReadDto>(updatedWithNav!);
         }
 
         public async Task<bool> DeleteAsync(int id)
         {
-            return await _repository.DeleteAsync(id);
+            var tieneTurnos = await _dbContext.Turnos.AnyAsync(t => t.DoctorId == id);
+            if (tieneTurnos)
+                throw new InvalidOperationException(
+                    "No se puede eliminar el doctor porque tiene turnos asociados. Cancele o reasigne los turnos primero.");
+
+            var deleted = await _repository.DeleteAsync(id);
+            if (deleted)
+                await _auditService.LogAsync(AuditAccion.Eliminar, "Doctor", id.ToString());
+            return deleted;
         }
 
         public async Task<bool> ExistAsync(int id)
-        {
-            var doctor = await _repository.GetByIdAsync(id);
-            return doctor != null;
-        }
+            => await _repository.ExistAsync(id);
     }
 }

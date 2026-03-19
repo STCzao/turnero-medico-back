@@ -76,7 +76,6 @@ namespace turnero_medico_backend.Services
                 UserName       = adminEmail,
                 Nombre         = "Administrador",
                 Apellido       = "Sistema",
-                Rol            = "Admin",
                 FechaRegistro  = DateTime.UtcNow,
                 EmailConfirmed = true
             };

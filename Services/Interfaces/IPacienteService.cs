@@ -6,7 +6,6 @@ namespace turnero_medico_backend.Services.Interfaces
 {
     public interface IPacienteService
     {
-        Task<IEnumerable<PacienteReadDto>> GetAllAsync();
         Task<PagedResultDto<PacienteReadDto>> GetAllPagedAsync(int page, int pageSize);
         Task<PacienteReadDto?> GetByIdAsync(int id);
         Task<PacienteReadDto?> GetMyProfileAsync();
@@ -16,7 +15,10 @@ namespace turnero_medico_backend.Services.Interfaces
         Task<bool> ExistAsync(int id);
 
         // Dependientes
-        Task<IEnumerable<PacienteReadDto>> GetMisDependientesAsync();
+        Task<PagedResultDto<PacienteReadDto>> GetMisDependientesAsync(int page, int pageSize);
         Task<PacienteReadDto> CreateDependienteAsync(DependienteCreateDto dto);
+
+        // GDPR: exportar todos los datos del paciente autenticado
+        Task<PacienteExportDto?> ExportarMisDatosAsync();
     }
 }

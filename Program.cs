@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using Npgsql.EntityFrameworkCore.PostgreSQL;
+using Serilog;
 using System.Text;
 using System.Threading.RateLimiting;
 using turnero_medico_backend.Data;
@@ -15,18 +17,72 @@ using turnero_medico_backend.Repositories.Interfaces;
 using turnero_medico_backend.Services;
 using turnero_medico_backend.Services.Interfaces;
 
+// ─── Configurar Serilog antes del host ───────────────────────────────────────
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .WriteTo.Console(outputTemplate:
+        "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+    .CreateBootstrapLogger();
+
 var builder = WebApplication.CreateBuilder(args);
+
+// ─── Serilog como provider de logging ────────────────────────────────────────
+builder.Host.UseSerilog((ctx, services, config) => config
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .Enrich.WithProperty("Application", "turnero-medico-backend")
+    .WriteTo.Console(outputTemplate:
+        "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}"));
 
 // Agregar servicios al contenedor
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Turnero Médico API", Version = "v1" });
+    var securityScheme = new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Ingresá el token JWT (sin el prefijo Bearer)"
+    };
+    c.AddSecurityDefinition("Bearer", securityScheme);
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 
 // ← AutoMapper
 builder.Services.AddAutoMapper(typeof(AutoMapperProfile).Assembly);
 
 // ← HttpContextAccessor para acceder a User actual en servicios
 builder.Services.AddHttpContextAccessor();
+
+// ← MemoryCache para catálogos de lectura frecuente (Especialidades, ObrasSociales)
+builder.Services.AddMemoryCache();
+
+// ← API Versioning
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new Asp.Versioning.ApiVersion(1, 0);
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ReportApiVersions = true;
+});
 
 // ── Leer DATABASE_URL (Render) o ConnectionStrings__DefaultConnection ──
 var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL")
@@ -96,6 +152,7 @@ builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 // Repositorios especializados con Include para navegaciones
 builder.Services.AddScoped<ITurnoRepository, TurnoRepository>();
 builder.Services.AddScoped<IPacienteRepository, PacienteRepository>();
+builder.Services.AddScoped<IDoctorRepository, DoctorRepository>();
 
 // Registrar Servicios
 builder.Services.AddScoped<IPacienteService, PacienteService>();
@@ -105,23 +162,43 @@ builder.Services.AddScoped<IObraSocialService, ObraSocialService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IHorarioService, HorarioService>();
 builder.Services.AddScoped<IEspecialidadService, EspecialidadService>();
+builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<SeedDataService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
-// Configurar CORS para permitir requests desde React (desarrollo)
+// Health Checks
+builder.Services.AddHealthChecks()
+    .AddCheck<DatabaseHealthCheck>("database", tags: ["db"]);
+
+// Configurar CORS
 builder.Services.AddCors(options =>
 {
+    // Desarrollo: permite desde localhost de React
     options.AddPolicy("AllowReactDev", policy =>
     {
         policy
-            .WithOrigins("http://localhost:5173", "http://localhost:3000") // Vite y Create React App
-            .AllowAnyMethod()      // GET, POST, PUT, DELETE, PATCH, etc.
-            .AllowAnyHeader()      // Content-Type, Authorization, etc.
-            .AllowCredentials();   // Cookies, credenciales
+            .WithOrigins("http://localhost:5173", "http://localhost:3000")
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
     });
+
+    // Producción: sólo el frontend desplegado
+    var frontendUrl = builder.Configuration["Cors:AllowedOrigin"];
+    if (!string.IsNullOrWhiteSpace(frontendUrl))
+    {
+        options.AddPolicy("AllowProduction", policy =>
+        {
+            policy
+                .WithOrigins(frontendUrl)
+                .AllowAnyMethod()
+                .AllowAnyHeader()
+                .AllowCredentials();
+        });
+    }
 });
 
-// Rate limiting: protege el endpoint de login contra fuerza bruta
+// Rate limiting: protege endpoints publicos contra abuso
 builder.Services.AddRateLimiter(options =>
 {
     options.AddFixedWindowLimiter("login", limiterOptions =>
@@ -131,6 +208,13 @@ builder.Services.AddRateLimiter(options =>
         limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
         limiterOptions.QueueLimit = 0;             // sin cola, rechazar inmediatamente
     });
+    options.AddFixedWindowLimiter("register", limiterOptions =>
+    {
+        limiterOptions.Window = TimeSpan.FromMinutes(10);
+        limiterOptions.PermitLimit = 5;            // máx 5 registros por 10 minutos por IP
+        limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        limiterOptions.QueueLimit = 0;
+    });
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
 
@@ -138,6 +222,9 @@ var app = builder.Build();
 
 // ← PRIMERO: Middleware para manejar excepciones globales
 app.UseMiddleware<GlobalExceptionMiddleware>();
+
+// ← Serilog request logging (después del exception middleware)
+app.UseSerilogRequestLogging();
 
 // Configurar el pipeline HTTP
 if (app.Environment.IsDevelopment())
@@ -149,7 +236,8 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 // ← CORS debe ir ANTES de Authentication
-app.UseCors("AllowReactDev");
+var corsPolicy = app.Environment.IsDevelopment() ? "AllowReactDev" : "AllowProduction";
+app.UseCors(corsPolicy);
 
 // ← Rate limiting
 app.UseRateLimiter();
@@ -158,13 +246,31 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHealthChecks("/healthz", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    ResponseWriter = async (ctx, rpt) =>
+    {
+        ctx.Response.ContentType = "application/json";
+        var result = System.Text.Json.JsonSerializer.Serialize(new { status = rpt.Status.ToString() });
+        await ctx.Response.WriteAsync(result);
+    }
+});
 
 // ← Aplicar migraciones automáticamente en producción
 if (app.Environment.IsProduction())
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    db.Database.Migrate();
+    var migrationLogger = scope.ServiceProvider.GetRequiredService<ILogger<ApplicationDbContext>>();
+    try
+    {
+        await db.Database.MigrateAsync();
+    }
+    catch (Exception ex)
+    {
+        migrationLogger.LogError(ex, "Error al aplicar migraciones automáticas. Verifique que la base de datos sea accesible.");
+        throw;
+    }
 }
 
 // ← Ejecutar Data Seeding (crear roles y usuario admin)

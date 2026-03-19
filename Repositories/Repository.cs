@@ -24,6 +24,7 @@ namespace turnero_medico_backend.Repositories
         {
             var total = await _dbSet.CountAsync();
             var items = await _dbSet
+                .OrderBy(e => EF.Property<int>(e, "Id"))
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -34,6 +35,9 @@ namespace turnero_medico_backend.Repositories
         {
             return await _dbSet.Where(predicate).ToListAsync();
         }
+
+        public async Task<bool> ExistAsync(int id)
+            => await _dbSet.AnyAsync(e => EF.Property<int>(e, "Id") == id);
 
         public async Task<T> AddAsync(T entity)
         {

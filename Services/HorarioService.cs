@@ -9,10 +9,12 @@ namespace turnero_medico_backend.Services
 {
     public class HorarioService(
         ApplicationDbContext dbContext,
-        IRepository<Doctor> doctorRepository) : IHorarioService
+        IRepository<Doctor> doctorRepository,
+        IAuditService auditService) : IHorarioService
     {
         private readonly ApplicationDbContext _dbContext = dbContext;
         private readonly IRepository<Doctor> _doctorRepository = doctorRepository;
+        private readonly IAuditService _auditService = auditService;
 
         private static readonly string[] DiasNombre =
             ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
@@ -69,6 +71,7 @@ namespace turnero_medico_backend.Services
 
             _dbContext.Horarios.Add(horario);
             await _dbContext.SaveChangesAsync();
+            await _auditService.LogAsync(AuditAccion.Crear, "Horario", horario.Id.ToString());
 
             return new HorarioReadDto
             {
@@ -90,6 +93,7 @@ namespace turnero_medico_backend.Services
 
             _dbContext.Horarios.Remove(horario);
             await _dbContext.SaveChangesAsync();
+            await _auditService.LogAsync(AuditAccion.Eliminar, "Horario", id.ToString());
             return true;
         }
 
@@ -111,17 +115,21 @@ namespace turnero_medico_backend.Services
             if (!horarios.Any())
                 return [];
 
-            // Obtener turnos confirmados del doctor para esa fecha
-            var fechaInicio = fecha.Date;
-            var fechaFin = fecha.Date.AddDays(1);
-            var turnosOcupados = await _dbContext.Turnos
+            // Obtener turnos confirmados del doctor para esa fecha (tratamos fecha como UTC)
+            var fechaUtc = DateTime.SpecifyKind(fecha.Date, DateTimeKind.Utc);
+            var fechaInicio = fechaUtc;
+            var fechaFin = fechaUtc.AddDays(1);
+            var turnosOcupados = (await _dbContext.Turnos
                 .Where(t =>
                     t.DoctorId == doctorId &&
                     t.FechaHora >= fechaInicio &&
                     t.FechaHora < fechaFin &&
                     t.Estado == EstadoTurno.Confirmado)
                 .Select(t => t.FechaHora)
-                .ToListAsync();
+                .ToListAsync())
+                .Where(t => t.HasValue)
+                .Select(t => t!.Value)
+                .ToHashSet();
 
             var doctorNombre = $"{doctor.Nombre} {doctor.Apellido}";
             var slots = new List<SlotDisponibleDto>();
@@ -131,7 +139,7 @@ namespace turnero_medico_backend.Services
                 var slot = horario.HoraInicio;
                 while (slot.AddMinutes(horario.DuracionMinutos) <= horario.HoraFin)
                 {
-                    var fechaHoraSlot = fecha.Date.Add(slot.ToTimeSpan());
+                    var fechaHoraSlot = fechaUtc.Add(slot.ToTimeSpan());
 
                     // Solo mostrar slots futuros y no ocupados
                     if (fechaHoraSlot > DateTime.UtcNow && !turnosOcupados.Contains(fechaHoraSlot))

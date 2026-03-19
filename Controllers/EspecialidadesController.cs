@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using turnero_medico_backend.DTOs.EspecialidadDTOs;
@@ -5,6 +6,7 @@ using turnero_medico_backend.Services.Interfaces;
 
 namespace turnero_medico_backend.Controllers
 {
+    [ApiVersion("1.0")]
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]

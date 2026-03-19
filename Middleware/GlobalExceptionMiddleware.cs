@@ -19,11 +19,12 @@ namespace turnero_medico_backend.Middleware
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Excepción no manejada: {ExceptionMessage}", ex.Message);
-                await HandleExceptionAsync(context, ex);
+                var env = context.RequestServices.GetRequiredService<IWebHostEnvironment>();
+                await HandleExceptionAsync(context, ex, env);
             }
         }
 
-        private static Task HandleExceptionAsync(HttpContext context, Exception exception)
+        private static Task HandleExceptionAsync(HttpContext context, Exception exception, IWebHostEnvironment env)
         {
             context.Response.ContentType = "application/json";
 
@@ -84,11 +85,12 @@ namespace turnero_medico_backend.Middleware
                     response.StatusCode = HttpStatusCode.InternalServerError;
                     response.Message = "Error interno del servidor";
                     response.Detail = "Ocurrió un error inesperado. Contacta con soporte.";
-#if DEBUG
-                    // En desarrollo, mostrar detalles
-                    response.Detail = exception.Message;
-                    response.StackTrace = exception.StackTrace;
-#endif
+                    if (env.IsDevelopment())
+                    {
+                        // En desarrollo, mostrar detalles
+                        response.Detail = exception.Message;
+                        response.StackTrace = exception.StackTrace;
+                    }
                     break;
             }
 

@@ -6,5 +6,6 @@ namespace turnero_medico_backend.Services.Interfaces
         string? GetUserRole();
         bool IsAdmin();
         string? GetUserEmail();
+        string? GetUserName();
     }
 }
