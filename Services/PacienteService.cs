@@ -105,6 +105,13 @@ namespace turnero_medico_backend.Services
                 return null;
 
             _mapper.Map(dto, paciente);
+
+            //Recalcular EsMayorDeEdad en base a FechaNacimiento actualizada
+            var hoy = DateTime.UtcNow;
+            var edad = hoy.Year - paciente.FechaNacimiento.Year;
+            if (paciente.FechaNacimiento > hoy.AddYears(-edad)) edad--;
+            paciente.EsMayorDeEdad = edad >= 18;
+
             await _pacienteRepository.UpdateAsync(paciente);
             await _auditService.LogAsync(AuditAccion.Actualizar, "Paciente", id.ToString());
             return _mapper.Map<PacienteReadDto>(paciente);
