@@ -14,9 +14,9 @@ namespace turnero_medico_backend.Controllers
     [Authorize]
     public class PacientesController(IPacienteService _service) : ControllerBase
     {
-        
+
         [HttpGet]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin,Secretaria")]
         public async Task<ActionResult<PagedResultDto<PacienteReadDto>>> GetAll(
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20)
@@ -27,7 +27,7 @@ namespace turnero_medico_backend.Controllers
 
         /// 
         /// Obtiene el perfil del paciente autenticado actual
-        
+
         [HttpGet("me")]
         public async Task<ActionResult<PacienteReadDto>> GetMyProfile()
         {

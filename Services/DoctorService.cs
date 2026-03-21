@@ -10,14 +10,20 @@ using turnero_medico_backend.Services.Interfaces;
 namespace turnero_medico_backend.Services
 {
     public class DoctorService(
-        IDoctorRepository _repository,
-        IRepository<Especialidad> _especialidadRepository,
-        IMapper _mapper,
-        ICurrentUserService _currentUserService,
-        IAuditService _auditService,
-        ApplicationDbContext _dbContext
+        IDoctorRepository repository,
+        IRepository<Especialidad> especialidadRepository,
+        IMapper mapper,
+        ICurrentUserService currentUserService,
+        IAuditService auditService,
+        ApplicationDbContext dbContext
     ) : IDoctorService
     {
+        private readonly IDoctorRepository _repository = repository;
+        private readonly IRepository<Especialidad> _especialidadRepository = especialidadRepository;
+        private readonly IMapper _mapper = mapper;
+        private readonly ICurrentUserService _currentUserService = currentUserService;
+        private readonly IAuditService _auditService = auditService;
+        private readonly ApplicationDbContext _dbContext = dbContext;
         public async Task<PagedResultDto<DoctorReadDto>> GetAllPagedAsync(int page, int pageSize)
         {
             pageSize = Math.Clamp(pageSize, 1, 100);

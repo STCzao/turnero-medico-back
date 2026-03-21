@@ -13,7 +13,6 @@ namespace turnero_medico_backend.Services
         ITurnoRepository turnoRepository,
         IRepository<Paciente> pacienteRepository,
         IRepository<Doctor> doctorRepository,
-        IRepository<ObraSocial> obraSocialRepository,
         IRepository<Especialidad> especialidadRepository,
         ApplicationDbContext dbContext,
         IMapper mapper,
@@ -23,7 +22,6 @@ namespace turnero_medico_backend.Services
         private readonly ITurnoRepository _turnoRepository = turnoRepository;
         private readonly IRepository<Paciente> _pacienteRepository = pacienteRepository;
         private readonly IRepository<Doctor> _doctorRepository = doctorRepository;
-        private readonly IRepository<ObraSocial> _obraSocialRepository = obraSocialRepository;
         private readonly IRepository<Especialidad> _especialidadRepository = especialidadRepository;
         private readonly ApplicationDbContext _dbContext = dbContext;
         private readonly IMapper _mapper = mapper;
@@ -244,6 +242,7 @@ namespace turnero_medico_backend.Services
                     turno.ObservacionClinica = dto.ObservacionClinica;
 
                 await _turnoRepository.UpdateAsync(turno);
+                await _auditService.LogAsync(AuditAccion.Actualizar, "Turno", id.ToString());
                 var updatedAdmin = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
                 return _mapper.Map<TurnoReadDto>(updatedAdmin!);
             }
@@ -269,6 +268,7 @@ namespace turnero_medico_backend.Services
                 turno.ObservacionClinica = dto.ObservacionClinica;
 
             await _turnoRepository.UpdateAsync(turno);
+            await _auditService.LogAsync(AuditAccion.Actualizar, "Turno", id.ToString());
             var updatedDoctor = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
             return _mapper.Map<TurnoReadDto>(updatedDoctor!);
         }

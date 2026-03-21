@@ -15,7 +15,7 @@ namespace turnero_medico_backend.Controllers
     {
 
         [HttpGet]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin,Secretaria")]
         public async Task<ActionResult<PagedResultDto<DoctorReadDto>>> GetAll(
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20)

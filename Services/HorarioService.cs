@@ -91,6 +91,18 @@ namespace turnero_medico_backend.Services
             var horario = await _dbContext.Horarios.FindAsync(id);
             if (horario == null) return false;
 
+            //Verificar que no haya turnos futuros confirmados que dependan de este horario
+            var tieneTurnosFuturos = await _dbContext.Turnos.AnyAsync(t =>
+            t.DoctorId == horario.DoctorId &&
+            t.Estado == EstadoTurno.Confirmado &&
+            t.FechaHora.HasValue &&
+            t.FechaHora.Value >= DateTime.UtcNow
+            );
+
+            if (tieneTurnosFuturos)
+                throw new InvalidOperationException(
+                    "No se puede eliminar el horario porque el doctor tiene turnos futuros confirmados.");
+
             _dbContext.Horarios.Remove(horario);
             await _dbContext.SaveChangesAsync();
             await _auditService.LogAsync(AuditAccion.Eliminar, "Horario", id.ToString());

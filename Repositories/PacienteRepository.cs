@@ -13,6 +13,7 @@ namespace turnero_medico_backend.Repositories
         public async Task<Paciente?> GetByIdWithObraSocialAsync(int id)
         {
             return await _ctx.Pacientes
+                .AsNoTracking()
                 .Include(p => p.ObraSocial)
                 .FirstOrDefaultAsync(p => p.Id == id);
         }
@@ -20,6 +21,7 @@ namespace turnero_medico_backend.Repositories
         public async Task<IEnumerable<Paciente>> GetAllWithObraSocialAsync()
         {
             return await _ctx.Pacientes
+                .AsNoTracking()
                 .Include(p => p.ObraSocial)
                 .ToListAsync();
         }
@@ -38,6 +40,7 @@ namespace turnero_medico_backend.Repositories
         public async Task<IEnumerable<Paciente>> FindWithObraSocialAsync(Expression<Func<Paciente, bool>> predicate)
         {
             return await _ctx.Pacientes
+                .AsNoTracking()
                 .Include(p => p.ObraSocial)
                 .Where(predicate)
                 .ToListAsync();
