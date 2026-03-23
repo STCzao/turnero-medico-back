@@ -18,16 +18,11 @@ using turnero_medico_backend.Repositories.Interfaces;
 using turnero_medico_backend.Services;
 using turnero_medico_backend.Services.Interfaces;
 
-// ─── Configurar Serilog antes del host ───────────────────────────────────────
-Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Information()
-    .WriteTo.Console(outputTemplate:
-        "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
-    .CreateBootstrapLogger();
-
 var builder = WebApplication.CreateBuilder(args);
 
 // ─── Serilog como provider de logging ────────────────────────────────────────
+// Note: no bootstrap logger — avoids Serilog's ReloadableLogger.Freeze() issue
+// in integration tests where Program.cs may be invoked multiple times.
 builder.Host.UseSerilog((ctx, services, config) => config
     .MinimumLevel.Information()
     .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Warning)
@@ -77,14 +72,6 @@ builder.Services.AddHttpContextAccessor();
 // ← MemoryCache para catálogos de lectura frecuente (Especialidades, ObrasSociales)
 builder.Services.AddMemoryCache();
 
-// ← API Versioning
-builder.Services.AddApiVersioning(options =>
-{
-    options.DefaultApiVersion = new Asp.Versioning.ApiVersion(1, 0);
-    options.AssumeDefaultVersionWhenUnspecified = true;
-    options.ReportApiVersions = true;
-});
-
 // ── Leer DATABASE_URL (Render) o ConnectionStrings__DefaultConnection ──
 var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL")
     ?? builder.Configuration["DATABASE_URL"];
@@ -118,7 +105,7 @@ var audience = builder.Configuration["Jwt:Audience"] ?? "turnero-medico-app";
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// API versiong accesible para las rutas
+// API versioning accesible para las rutas
 builder.Services.AddApiVersioning(options =>
 {
     options.DefaultApiVersion = new Asp.Versioning.ApiVersion(1, 0);
@@ -128,7 +115,7 @@ builder.Services.AddApiVersioning(options =>
         new Asp.Versioning.UrlSegmentApiVersionReader(),
         new Asp.Versioning.HeaderApiVersionReader("api-version")
     );
-});
+}).AddMvc();
 
 // Configurar ASP.NET Identity
 builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
@@ -143,7 +130,13 @@ builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+builder.Services.AddAuthentication(options =>
+{
+    // Override Identity's default cookie challenge — API must return 401, not redirect
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme    = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultForbidScheme       = JwtBearerDefaults.AuthenticationScheme;
+})
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
@@ -246,7 +239,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// Skip HTTPS redirect in test environment (TestServer uses HTTP only)
+if (!app.Environment.IsEnvironment("Testing"))
+    app.UseHttpsRedirection();
 
 // ← CORS debe ir ANTES de Authentication
 var corsPolicy = app.Environment.IsDevelopment() ? "AllowReactDev" : "AllowProduction";
@@ -290,3 +285,6 @@ if (app.Environment.IsProduction())
 await app.SeedDatabaseAsync();
 
 app.Run();
+
+// Expose Program class for WebApplicationFactory (integration tests)
+public partial class Program { }

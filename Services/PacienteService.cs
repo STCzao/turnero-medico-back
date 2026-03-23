@@ -11,13 +11,18 @@ using static turnero_medico_backend.DTOs.PacienteDTOs.PacienteExportDto;
 namespace turnero_medico_backend.Services
 {
     public class PacienteService(
-        IPacienteRepository _pacienteRepository,
-        ApplicationDbContext _dbContext,
-        IMapper _mapper,
-        ICurrentUserService _currentUserService,
-        IAuditService _auditService
+        IPacienteRepository pacienteRepository,
+        ApplicationDbContext dbContext,
+        IMapper mapper,
+        ICurrentUserService currentUserService,
+        IAuditService auditService
     ) : IPacienteService
     {
+        private readonly IPacienteRepository _pacienteRepository = pacienteRepository;
+        private readonly ApplicationDbContext _dbContext = dbContext;
+        private readonly IMapper _mapper = mapper;
+        private readonly ICurrentUserService _currentUserService = currentUserService;
+        private readonly IAuditService _auditService = auditService;
         public async Task<PagedResultDto<PacienteReadDto>> GetAllPagedAsync(int page, int pageSize)
         {
             pageSize = Math.Clamp(pageSize, 1, 100);
@@ -98,11 +103,10 @@ namespace turnero_medico_backend.Services
             return _mapper.Map<PacienteReadDto>(createdPaciente);
         }
 
-        public async Task<PacienteReadDto?> UpdateAsync(int id, PacienteUpdateDto dto)
+        public async Task<PacienteReadDto> UpdateAsync(int id, PacienteUpdateDto dto)
         {
-            var paciente = await _pacienteRepository.GetByIdAsync(id);
-            if (paciente == null)
-                return null;
+            var paciente = await _pacienteRepository.GetByIdAsync(id)
+                ?? throw new KeyNotFoundException($"Paciente con ID {id} no encontrado.");
 
             _mapper.Map(dto, paciente);
 
@@ -119,6 +123,9 @@ namespace turnero_medico_backend.Services
 
         public async Task<bool> DeleteAsync(int id)
         {
+            if (!await _pacienteRepository.ExistAsync(id))
+                throw new KeyNotFoundException($"Paciente con ID {id} no encontrado.");
+
             var tieneTurnos = await _dbContext.Turnos.AnyAsync(t => t.PacienteId == id);
             if (tieneTurnos)
                 throw new InvalidOperationException(

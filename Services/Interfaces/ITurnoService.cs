@@ -10,16 +10,16 @@ namespace turnero_medico_backend.Services.Interfaces
         Task<IEnumerable<TurnoReadDto>> GetByDoctorAsync(int doctorId, string? estado = null);
         Task<TurnoReadDto?> GetByIdAsync(int id);
         Task<TurnoReadDto> CreateAsync(TurnoCreateDto dto);
-        Task<TurnoReadDto?> UpdateAsync(int id, TurnoUpdateDto dto);
+        Task<TurnoReadDto> UpdateAsync(int id, TurnoUpdateDto dto);
         Task<bool> DeleteAsync(int id);
         Task<bool> ExistAsync(int id);
 
         // Gestión administrativa — solo Secretaria/Admin
-        Task<TurnoReadDto?> ConfirmarAsync(int turnoId, ConfirmarTurnoDto dto);
-        Task<TurnoReadDto?> RechazarAsync(int turnoId, RechazarTurnoDto dto);
+        Task<TurnoReadDto> ConfirmarAsync(int turnoId, ConfirmarTurnoDto dto);
+        Task<TurnoReadDto> RechazarAsync(int turnoId, RechazarTurnoDto dto);
 
         // Cancelación — Paciente, Doctor, Secretaria y Admin con reglas propias
-        Task<TurnoReadDto?> CancelarAsync(int turnoId, CancelarTurnoDto dto);
+        Task<TurnoReadDto> CancelarAsync(int turnoId, CancelarTurnoDto dto);
 
         // Mis turnos — resuelve automáticamente el ID según rol del usuario autenticado
         Task<IEnumerable<TurnoReadDto>> GetMyTurnosAsync(string? estado = null);

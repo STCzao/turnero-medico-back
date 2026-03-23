@@ -84,9 +84,6 @@ namespace turnero_medico_backend.Controllers
                 return BadRequest(ModelState);
 
             var turno = await _service.ConfirmarAsync(id, dto);
-            if (turno == null)
-                return NotFound(new { mensaje = $"Turno con ID {id} no encontrado" });
-
             return Ok(turno);
         }
 
@@ -99,9 +96,6 @@ namespace turnero_medico_backend.Controllers
                 return BadRequest(ModelState);
 
             var turno = await _service.RechazarAsync(id, dto);
-            if (turno == null)
-                return NotFound(new { mensaje = $"Turno con ID {id} no encontrado" });
-
             return Ok(turno);
         }
 
@@ -113,9 +107,6 @@ namespace turnero_medico_backend.Controllers
                 return BadRequest(ModelState);
 
             var turno = await _service.CancelarAsync(id, dto);
-            if (turno == null)
-                return NotFound(new { mensaje = $"Turno con ID {id} no encontrado" });
-
             return Ok(turno);
         }
 
@@ -131,9 +122,6 @@ namespace turnero_medico_backend.Controllers
                 return BadRequest(new { mensaje = "El ID de la URL no coincide con el ID del DTO" });
 
             var turno = await _service.UpdateAsync(id, dto);
-            if (turno == null)
-                return NotFound(new { mensaje = $"Turno con ID {id} no encontrado" });
-
             return Ok(turno);
         }
 
@@ -141,10 +129,7 @@ namespace turnero_medico_backend.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult> Delete(int id)
         {
-            var result = await _service.DeleteAsync(id);
-            if (!result)
-                return NotFound(new { mensaje = $"Turno con ID {id} no encontrado" });
-
+            await _service.DeleteAsync(id);
             return NoContent();
         }
 

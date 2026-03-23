@@ -220,10 +220,10 @@ namespace turnero_medico_backend.Services
         // ACTUALIZAR (Doctor: Completado/Ausente + ObservacionClinica)
         // ─────────────────────────────────────────────────────────────
 
-        public async Task<TurnoReadDto?> UpdateAsync(int id, TurnoUpdateDto dto)
+        public async Task<TurnoReadDto> UpdateAsync(int id, TurnoUpdateDto dto)
         {
-            var turno = await _turnoRepository.GetByIdAsync(id);
-            if (turno == null) return null;
+            var turno = await _turnoRepository.GetByIdAsync(id)
+                ?? throw new KeyNotFoundException($"Turno con ID {id} no encontrado.");
 
             var userRole = _currentUserService.GetUserRole();
             var userId = _currentUserService.GetUserId();
@@ -274,10 +274,10 @@ namespace turnero_medico_backend.Services
         }
         // ─────────────────────────────────────────────────────────────
 
-        public async Task<TurnoReadDto?> ConfirmarAsync(int turnoId, ConfirmarTurnoDto dto)
+        public async Task<TurnoReadDto> ConfirmarAsync(int turnoId, ConfirmarTurnoDto dto)
         {
-            var turno = await _turnoRepository.GetByIdAsync(turnoId);
-            if (turno == null) return null;
+            var turno = await _turnoRepository.GetByIdAsync(turnoId)
+                ?? throw new KeyNotFoundException($"Turno con ID {turnoId} no encontrado.");
 
             var userRole = _currentUserService.GetUserRole();
             if (userRole != "Secretaria" && userRole != "Admin")
@@ -356,10 +356,10 @@ namespace turnero_medico_backend.Services
         // RECHAZAR (Secretaria / Admin)
         // ─────────────────────────────────────────────────────────────
 
-        public async Task<TurnoReadDto?> RechazarAsync(int turnoId, RechazarTurnoDto dto)
+        public async Task<TurnoReadDto> RechazarAsync(int turnoId, RechazarTurnoDto dto)
         {
-            var turno = await _turnoRepository.GetByIdAsync(turnoId);
-            if (turno == null) return null;
+            var turno = await _turnoRepository.GetByIdAsync(turnoId)
+                ?? throw new KeyNotFoundException($"Turno con ID {turnoId} no encontrado.");
 
             var userRole = _currentUserService.GetUserRole();
             if (userRole != "Secretaria" && userRole != "Admin")
@@ -386,10 +386,10 @@ namespace turnero_medico_backend.Services
         // CANCELAR (Paciente / Doctor / Secretaria / Admin)
         // ─────────────────────────────────────────────────────────────
 
-        public async Task<TurnoReadDto?> CancelarAsync(int turnoId, CancelarTurnoDto dto)
+        public async Task<TurnoReadDto> CancelarAsync(int turnoId, CancelarTurnoDto dto)
         {
-            var turno = await _turnoRepository.GetByIdAsync(turnoId);
-            if (turno == null) return null;
+            var turno = await _turnoRepository.GetByIdAsync(turnoId)
+                ?? throw new KeyNotFoundException($"Turno con ID {turnoId} no encontrado.");
 
             var userRole = _currentUserService.GetUserRole();
             var userId = _currentUserService.GetUserId();
@@ -454,8 +454,8 @@ namespace turnero_medico_backend.Services
 
         public async Task<bool> DeleteAsync(int id)
         {
-            var turno = await _turnoRepository.GetByIdAsync(id);
-            if (turno == null) return false;
+            var turno = await _turnoRepository.GetByIdAsync(id)
+                ?? throw new KeyNotFoundException($"Turno con ID {id} no encontrado.");
 
             if (!_currentUserService.IsAdmin())
                 throw new UnauthorizedAccessException("Solo el administrador puede eliminar turnos.");

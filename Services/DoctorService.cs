@@ -74,10 +74,10 @@ namespace turnero_medico_backend.Services
             return _mapper.Map<DoctorReadDto>(createdWithNav!);
         }
 
-        public async Task<DoctorReadDto?> UpdateAsync(int id, DoctorUpdateDto dto)
+        public async Task<DoctorReadDto> UpdateAsync(int id, DoctorUpdateDto dto)
         {
-            var doctor = await _repository.GetByIdWithEspecialidadAsync(id);
-            if (doctor == null) return null;
+            var doctor = await _repository.GetByIdWithEspecialidadAsync(id)
+                ?? throw new KeyNotFoundException($"Doctor con ID {id} no encontrado.");
 
             _ = await _especialidadRepository.GetByIdAsync(dto.EspecialidadId)
                 ?? throw new InvalidOperationException($"La especialidad con ID {dto.EspecialidadId} no existe.");
@@ -91,6 +91,9 @@ namespace turnero_medico_backend.Services
 
         public async Task<bool> DeleteAsync(int id)
         {
+            if (!await _repository.ExistAsync(id))
+                throw new KeyNotFoundException($"Doctor con ID {id} no encontrado.");
+
             var tieneTurnos = await _dbContext.Turnos.AnyAsync(t => t.DoctorId == id);
             if (tieneTurnos)
                 throw new InvalidOperationException(

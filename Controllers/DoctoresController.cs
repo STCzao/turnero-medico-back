@@ -83,9 +83,6 @@ namespace turnero_medico_backend.Controllers
                 return BadRequest(new { mensaje = "El ID de la URL no coincide con el ID del DTO" });
 
             var doctor = await _service.UpdateAsync(id, dto);
-            if (doctor == null)
-                return NotFound(new { mensaje = $"Doctor con ID {id} no encontrado" });
-
             return Ok(doctor);
         }
         
@@ -94,10 +91,7 @@ namespace turnero_medico_backend.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult> Delete(int id)
         {
-            var result = await _service.DeleteAsync(id);
-            if (!result)
-                return NotFound(new { mensaje = $"Doctor con ID {id} no encontrado" });
-
+            await _service.DeleteAsync(id);
             return NoContent();
         }
     }
