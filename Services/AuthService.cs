@@ -347,7 +347,7 @@ namespace turnero_medico_backend.Services
             var secretKey = _configuration["Jwt:SecretKey"];
             var issuer = _configuration["Jwt:Issuer"];
             var audience = _configuration["Jwt:Audience"];
-            var expirationMinutes = int.Parse(_configuration["Jwt:ExpirationMinutes"] ?? "1440");
+            var expirationMinutes = int.Parse(_configuration["Jwt:ExpirationMinutes"] ?? "30");
 
             var claims = new List<Claim>
             {

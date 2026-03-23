@@ -17,7 +17,9 @@ services:
       - key: Jwt__Audience
         value: turnero-medico-app
       - key: Jwt__ExpirationMinutes
-        value: 1440
+        value: 30
+      - key: Jwt__RefreshTokenExpirationDays
+        value: 30
       - key: AdminSeed__Email
         value: admin@turneromedico.local
       - key: AdminSeed__Password
