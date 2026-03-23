@@ -10,7 +10,7 @@ namespace turnero_medico_backend.Services.Interfaces
         Task<DoctorReadDto?> GetByIdAsync(int id);
         Task<DoctorReadDto?> GetMyProfileAsync();  // ← NUEVO: Obtener perfil propio
         Task<DoctorReadDto> CreateAsync(DoctorCreateDto dto);
-        Task<DoctorReadDto?> UpdateAsync(int id, DoctorUpdateDto dto);
+        Task<DoctorReadDto> UpdateAsync(int id, DoctorUpdateDto dto);
         Task<bool> DeleteAsync(int id);
         Task<bool> ExistAsync(int id);
     }

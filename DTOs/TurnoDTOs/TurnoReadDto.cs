@@ -19,8 +19,7 @@ public class TurnoReadDto
     public string DoctorNombre { get; set; } = string.Empty;
 
     // Trazabilidad
-    public string? CreaPorNombre { get; set; } 
-    public string? GestionadoPorNombre { get; set;} 
+    public string CreatedByUserId { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
 
     // Cobertura (declarada por paciente al solicitar)

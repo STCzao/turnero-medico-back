@@ -88,8 +88,8 @@ namespace turnero_medico_backend.Services
 
         public async Task<bool> DeleteAsync(int id)
         {
-            var horario = await _dbContext.Horarios.FindAsync(id);
-            if (horario == null) return false;
+            var horario = await _dbContext.Horarios.FindAsync(id)
+                ?? throw new KeyNotFoundException($"Horario con ID {id} no encontrado.");
 
             //Verificar que no haya turnos futuros confirmados que dependan de este horario
             var tieneTurnosFuturos = await _dbContext.Turnos.AnyAsync(t =>

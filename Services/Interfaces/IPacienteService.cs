@@ -10,7 +10,7 @@ namespace turnero_medico_backend.Services.Interfaces
         Task<PacienteReadDto?> GetByIdAsync(int id);
         Task<PacienteReadDto?> GetMyProfileAsync();
         Task<PacienteReadDto> CreateAsync(PacienteCreateDto dto);
-        Task<PacienteReadDto?> UpdateAsync(int id, PacienteUpdateDto dto);
+        Task<PacienteReadDto> UpdateAsync(int id, PacienteUpdateDto dto);
         Task<bool> DeleteAsync(int id);
         Task<bool> ExistAsync(int id);
 

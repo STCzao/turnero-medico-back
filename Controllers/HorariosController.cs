@@ -37,10 +37,7 @@ namespace turnero_medico_backend.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult> Delete(int id)
         {
-            var result = await _service.DeleteAsync(id);
-            if (!result)
-                return NotFound(new { mensaje = $"Horario con ID {id} no encontrado" });
-
+            await _service.DeleteAsync(id);
             return NoContent();
         }
 
