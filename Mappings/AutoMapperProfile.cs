@@ -34,9 +34,11 @@ namespace turnero_medico_backend.Mappings
                 .ForMember(dest => dest.EspecialidadNombre,
                     opt => opt.MapFrom(src => src.Especialidad != null ? src.Especialidad.Nombre : string.Empty));
 
-            CreateMap<DoctorCreateDto, Doctor>();
+            CreateMap<DoctorCreateDto, Doctor>()
+                .ForMember(dest => dest.Dni, opt => opt.MapFrom(src => src.Dni ?? string.Empty));
 
-            CreateMap<DoctorUpdateDto, Doctor>();
+            CreateMap<DoctorUpdateDto, Doctor>()
+                .ForMember(dest => dest.Dni, opt => opt.MapFrom(src => src.Dni ?? string.Empty));
 
             // Turno mappings
             CreateMap<Turno, TurnoReadDto>()

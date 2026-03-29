@@ -19,4 +19,7 @@ public class SecretariaUpdateDto
     [EmailAddress(ErrorMessage = "El email no tiene un formato válido")]
     [StringLength(256, ErrorMessage = "El email no puede exceder 256 caracteres")]
     public string Email { get; set; } = string.Empty;
+
+    [RegularExpression(@"^\d{7,8}$", ErrorMessage = "El DNI debe tener 7 u 8 dígitos numéricos")]
+    public string? Dni { get; set; }
 }

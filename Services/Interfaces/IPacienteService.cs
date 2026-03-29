@@ -17,6 +17,8 @@ namespace turnero_medico_backend.Services.Interfaces
         // Dependientes
         Task<PagedResultDto<PacienteReadDto>> GetMisDependientesAsync(int page, int pageSize);
         Task<PacienteReadDto> CreateDependienteAsync(DependienteCreateDto dto);
+        Task<PacienteReadDto> UpdateDependienteAsync(int id, DependienteUpdateDto dto);
+        Task<bool> DeleteDependienteAsync(int id);
 
         // GDPR: exportar todos los datos del paciente autenticado
         Task<PacienteExportDto?> ExportarMisDatosAsync();

@@ -75,6 +75,7 @@ public class SecretariaService(
         user.UserName = dto.Email.Trim();
         user.NormalizedEmail = dto.Email.Trim().ToUpperInvariant();
         user.NormalizedUserName = dto.Email.Trim().ToUpperInvariant();
+        if (dto.Dni != null) user.Dni = dto.Dni.Trim();
 
         var result = await _userManager.UpdateAsync(user);
         if (!result.Succeeded)
@@ -113,6 +114,7 @@ public class SecretariaService(
         Nombre = user.Nombre,
         Apellido = user.Apellido,
         Email = user.Email ?? string.Empty,
+        Dni = user.Dni,
         FechaRegistro = user.FechaRegistro,
     };
 }

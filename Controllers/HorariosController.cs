@@ -48,9 +48,6 @@ namespace turnero_medico_backend.Controllers
             int doctorId,
             [FromQuery] DateTime fecha)
         {
-            if (fecha.Date < DateTime.UtcNow.Date)
-                return BadRequest(new { mensaje = "La fecha no puede ser en el pasado" });
-
             var slots = await _service.GetDisponibilidadAsync(doctorId, fecha);
             return Ok(slots);
         }

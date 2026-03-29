@@ -107,6 +107,28 @@ namespace turnero_medico_backend.Controllers
             return CreatedAtAction(nameof(GetById), new { id = dependiente.Id }, dependiente);
         }
 
+        [HttpPut("dependientes/{id}")]
+        [Authorize(Roles = "Paciente")]
+        public async Task<ActionResult<PacienteReadDto>> UpdateDependiente(int id, DependienteUpdateDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            if (id != dto.Id)
+                return BadRequest(new { mensaje = "El ID de la URL no coincide con el ID del DTO" });
+
+            var dependiente = await _service.UpdateDependienteAsync(id, dto);
+            return Ok(dependiente);
+        }
+
+        [HttpDelete("dependientes/{id}")]
+        [Authorize(Roles = "Paciente")]
+        public async Task<ActionResult> DeleteDependiente(int id)
+        {
+            await _service.DeleteDependienteAsync(id);
+            return NoContent();
+        }
+
         /// <summary>
         /// Exporta todos los datos personales del paciente autenticado (GDPR).
         /// </summary>
