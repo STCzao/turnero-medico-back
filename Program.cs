@@ -248,8 +248,9 @@ if (!app.Environment.IsEnvironment("Testing"))
 var corsPolicy = app.Environment.IsDevelopment() ? "AllowReactDev" : "AllowProduction";
 app.UseCors(corsPolicy);
 
-// ← Rate limiting
-app.UseRateLimiter();
+// ← Rate limiting (skipped in Testing to avoid 429s during parallel test execution)
+if (!app.Environment.IsEnvironment("Testing"))
+    app.UseRateLimiter();
 
 // ← Esta línea es IMPORTANTE: Middleware de autenticación
 app.UseAuthentication();
