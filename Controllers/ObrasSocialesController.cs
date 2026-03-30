@@ -7,6 +7,10 @@ using turnero_medico_backend.Services.Interfaces;
 
 namespace turnero_medico_backend.Controllers
 {
+    // Catálogo de obras sociales.
+    // GET es accesible por cualquier usuario autenticado.
+    // CREATE/UPDATE es Admin o Secretaria. DELETE es solo Admin.
+    // El listado está cacheado en ObraSocialService — 60 minutos en IMemoryCache.
     [ApiVersion("1.0")]
     [ApiController]
     [Route("api/[controller]")]

@@ -9,6 +9,11 @@ using turnero_medico_backend.Services.Interfaces;
 
 namespace turnero_medico_backend.Services
 {
+    // Catálogo de obras sociales. Misma estrategia de caché que EspecialidadService:
+    // lectura cacheada 60 min, cualquier escritura invalida el caché.
+    // Usa ApplicationDbContext directamente (en lugar de IRepository) porque ObraSocial
+    // tiene una relación muchos-a-muchos con Especialidades que requiere Include()
+    // y manipulación explícita de la colección Especialidades en Create/Update.
     public class ObraSocialService(
         ApplicationDbContext context,
         IMapper mapper,
@@ -20,8 +25,8 @@ namespace turnero_medico_backend.Services
         private readonly IMemoryCache _cache = cache;
         private readonly IAuditService _auditService = auditService;
 
-        private const string CacheKey = "obras-sociales:all";
-        private static readonly TimeSpan Ttl = TimeSpan.FromMinutes(60);
+        private const string CacheKey = "obras-sociales:all";  // clave de IMemoryCache
+        private static readonly TimeSpan Ttl = TimeSpan.FromMinutes(60);  // TTL del caché
 
         // Obtiene la lista completa desde caché o DB
         private async Task<List<ObraSocialReadDto>> GetCachedAllAsync()

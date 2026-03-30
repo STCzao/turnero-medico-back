@@ -8,6 +8,12 @@ using turnero_medico_backend.Services.Interfaces;
 
 namespace turnero_medico_backend.Services
 {
+    // Catálogo de especialidades médicas.
+    // GetAllAsync está cacheado 60 minutos porque las especialidades cambian con muy poca
+    // frecuencia. Toda escritura (Create/Update/Delete) invalida la entrada del caché
+    // para que la próxima lectura refleje el cambio.
+    // La unicidad de nombre se verifica en capa de servicio (no solo en BD) para poder
+    // devolver un mensaje de error descriptivo antes de intentar el INSERT.
     public class EspecialidadService(
         IRepository<Especialidad> repository,
         IMapper mapper,
@@ -19,8 +25,8 @@ namespace turnero_medico_backend.Services
         private readonly IMemoryCache _cache = cache;
         private readonly IAuditService _auditService = auditService;
 
-        private const string CacheKey = "especialidades:all";
-        private static readonly TimeSpan Ttl = TimeSpan.FromMinutes(60);
+        private const string CacheKey = "especialidades:all";  // clave de IMemoryCache
+        private static readonly TimeSpan Ttl = TimeSpan.FromMinutes(60);  // TTL del caché
 
         public async Task<IEnumerable<EspecialidadReadDto>> GetAllAsync()
         {

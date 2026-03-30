@@ -5,6 +5,9 @@ using turnero_medico_backend.Services.Interfaces;
 
 namespace turnero_medico_backend.Services
 {
+    // Implementación de IAuditService. Escribe directamente a la tabla AuditLogs.
+    // Si el SaveChanges falla (ej: BD no disponible), el error se logea en Serilog
+    // pero NO se propaga: el fallo de auditoría nunca debe interrumpir la operación principal.
     public class AuditService(
         ApplicationDbContext dbContext,
         ICurrentUserService currentUserService,
@@ -17,9 +20,10 @@ namespace turnero_medico_backend.Services
         public async Task LogAsync(string accion, string entidad, string entidadId,
             string? valoresAnteriores = null, string? valoresNuevos = null)
         {
-            var userId       = _currentUserService.GetUserId();
+            var userId        = _currentUserService.GetUserId();
             var usuarioNombre = _currentUserService.GetUserName();
-            var ip           = _httpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString();
+            // La IP puede ser null en operaciones de sistema (seed) donde no hay HttpContext
+            var ip            = _httpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString();
 
             var log = new AuditLog
             {
@@ -41,6 +45,7 @@ namespace turnero_medico_backend.Services
             }
             catch (Exception ex)
             {
+                // Auditoría no-fatal: loguear y continuar sin interrumpir el flujo de negocio
                 Log.Warning(ex, "Fallo al persistir AuditLog para {Accion} {Entidad} {EntidadId}",
                     accion, entidad, entidadId);
             }

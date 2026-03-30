@@ -4,11 +4,9 @@ using turnero_medico_backend.Models.Entities;
 
 namespace turnero_medico_backend.Data
 {
-    /// <>
-    /// Contexto de base de datos que incluye:
-    /// Tablas de dominio: Pacientes, Doctores, Turnos
-    /// Tablas de Identity: AspNetUsers, AspNetRoles, AspNetUserRoles, etc.
-    /// </>
+    // Contexto de base de datos principal.
+    // Hereda de IdentityDbContext para incluir automáticamente las tablas de ASP.NET Identity
+    // (AspNetUsers, AspNetRoles, AspNetUserClaims, etc.) además de las tablas de dominio.
     public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : IdentityDbContext<ApplicationUser, ApplicationRole, string>(options)
     {
         public DbSet<Paciente> Pacientes { get; set; }

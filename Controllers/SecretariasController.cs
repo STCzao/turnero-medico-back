@@ -7,6 +7,9 @@ using turnero_medico_backend.Services.Interfaces;
 
 namespace turnero_medico_backend.Controllers;
 
+// CRUD de secretarias — exclusivo para Admin.
+// Las secretarias no tienen entidad de dominio propia; sus datos viven en AspNetUsers
+// con el rol "Secretaria". El registro se hace vía /api/auth/register-secretaria.
 [ApiVersion("1.0")]
 [ApiController]
 [Route("api/[controller]")]

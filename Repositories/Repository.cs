@@ -5,6 +5,10 @@ using turnero_medico_backend.Repositories.Interfaces;
 
 namespace turnero_medico_backend.Repositories
 {
+    // Implementación genérica del patrón Repository.
+    // Proporciona CRUD estándar para cualquier entidad. Los repositorios especializados
+    // (TurnoRepository, PacienteRepository, DoctorRepository) heredan de esta clase y
+    // agregan métodos con Include() para cargar propiedades de navegación cuando sean necesarias.
     public class Repository<T>(ApplicationDbContext context) : IRepository<T> where T : class
     {
         private readonly ApplicationDbContext _context = context;
@@ -20,6 +24,8 @@ namespace turnero_medico_backend.Repositories
             return await _dbSet.ToListAsync();
         }
 
+        // Paginación con orden por Id. EF.Property permite ordernar por nombre de columna
+        // sin que T necesite implementar ninguna interfaz específica.
         public async Task<(IEnumerable<T> Items, int Total)> GetAllPagedAsync(int page, int pageSize)
         {
             var total = await _dbSet.CountAsync();
@@ -36,6 +42,7 @@ namespace turnero_medico_backend.Repositories
             return await _dbSet.Where(predicate).ToListAsync();
         }
 
+        // Usa AnyAsync en lugar de FindAsync + null-check para evitar cargar la entidad completa
         public async Task<bool> ExistAsync(int id)
             => await _dbSet.AnyAsync(e => EF.Property<int>(e, "Id") == id);
 

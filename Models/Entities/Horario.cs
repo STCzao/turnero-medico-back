@@ -1,5 +1,9 @@
 namespace turnero_medico_backend.Models.Entities
 {
+    // Define un bloque de atención semanal de un doctor.
+    // Un doctor puede tener múltiples Horarios (ej: lunes 8-12 y martes 14-18).
+    // HorarioService.GetDisponibilidadAsync divide estos bloques en slots de DuracionMinutos
+    // y filtra los ya ocupados con turnos confirmados para devolver los disponibles.
     public class Horario
     {
         public int Id { get; set; }

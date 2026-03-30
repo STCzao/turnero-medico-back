@@ -6,12 +6,16 @@ using turnero_medico_backend.Services.Interfaces;
 
 namespace turnero_medico_backend.Controllers
 {
+    // Catálogo de especialidades médicas.
+    // GET (lista y por ID) es accesible por cualquier usuario autenticado.
+    // CREATE/UPDATE/DELETE es solo Admin.
     [ApiVersion("1.0")]
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
     public class EspecialidadesController(IEspecialidadService _service) : ControllerBase
     {
+        // El resultado está cacheado en EspecialidadService — 60 minutos en IMemoryCache
         [HttpGet]
         public async Task<ActionResult<IEnumerable<EspecialidadReadDto>>> GetAll()
         {

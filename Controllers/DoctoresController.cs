@@ -7,13 +7,18 @@ using turnero_medico_backend.Services.Interfaces;
 
 namespace turnero_medico_backend.Controllers
 {
+    // Gestión de doctores.
+    // GET por especialidad y por ID son accesibles por todos los roles autenticados
+    // (paciente necesita saber qué doctores atienden su especialidad).
+    // El listado completo paginado es solo Admin/Secretaria.
+    // CREATE/UPDATE/DELETE son exclusivos de Admin.
     [ApiVersion("1.0")]
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
     public class DoctoresController(IDoctorService _service) : ControllerBase
     {
-
+        // Listado completo paginado con EspecialidadNombre — solo Admin/Secretaria
         [HttpGet]
         [Authorize(Roles = "Admin,Secretaria")]
         public async Task<ActionResult<PagedResultDto<DoctorReadDto>>> GetAll(
@@ -38,6 +43,7 @@ namespace turnero_medico_backend.Controllers
         }
 
 
+        // Filtro por especialidad — accesible para Pacientes al elegir doctor al solicitar turno
         [HttpGet("especialidad/{especialidadId}")]
         public async Task<ActionResult<IEnumerable<DoctorReadDto>>> GetByEspecialidad(int especialidadId)
         {

@@ -7,6 +7,10 @@ using turnero_medico_backend.Services.Interfaces;
 
 namespace turnero_medico_backend.Services;
 
+// Servicio de gestión de secretarias.
+// A diferencia de Doctor y Paciente, Secretaria no tiene entidad de dominio propia:
+// sus datos viven únicamente en AspNetUsers con el rol "Secretaria".
+// Por eso las operaciones se hacen directamente sobre UserManager<ApplicationUser>.
 public class SecretariaService(
     UserManager<ApplicationUser> userManager,
     IAuditService auditService) : ISecretariaService
@@ -18,6 +22,9 @@ public class SecretariaService(
     {
         pageSize = Math.Clamp(pageSize, 1, 100);
 
+        // GetUsersInRoleAsync trae todos los usuarios del rol en memoria.
+        // La paginación se hace en memoria porque la cantidad de secretarias es pequeña
+        // y UserManager no expone IQueryable con filtro de rol.
         var secretarias = await _userManager.GetUsersInRoleAsync("Secretaria");
 
         var ordered = secretarias

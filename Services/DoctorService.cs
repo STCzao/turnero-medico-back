@@ -9,6 +9,11 @@ using turnero_medico_backend.Services.Interfaces;
 
 namespace turnero_medico_backend.Services
 {
+    // Servicio de gestión de doctores.
+    // El CRUD completo es exclusivo de Admin. Los doctores autenticados pueden consultar
+    // su propio perfil a través de GetMyProfileAsync() sin conocer su ID numérico.
+    // Al crear o actualizar, se recarga el doctor con Include(Especialidad) para que
+    // el DTO devuelto tenga EspecialidadNombre completo.
     public class DoctorService(
         IDoctorRepository repository,
         IRepository<Especialidad> especialidadRepository,
@@ -94,6 +99,8 @@ namespace turnero_medico_backend.Services
             if (!await _repository.ExistAsync(id))
                 throw new KeyNotFoundException($"Doctor con ID {id} no encontrado.");
 
+            // Restricción de integridad: no se puede borrar un doctor con historial de turnos.
+            // El Admin debe cancelar o reasignar los turnos antes de eliminar.
             var tieneTurnos = await _dbContext.Turnos.AnyAsync(t => t.DoctorId == id);
             if (tieneTurnos)
                 throw new InvalidOperationException(

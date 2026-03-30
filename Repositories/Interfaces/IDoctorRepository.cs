@@ -3,6 +3,9 @@ using turnero_medico_backend.Models.Entities;
 
 namespace turnero_medico_backend.Repositories.Interfaces
 {
+    // Repositorio especializado para Doctor.
+    // Los métodos WithEspecialidad cargan la relación Especialidad para construir
+    // DoctorReadDto con EspecialidadNombre sin queries adicionales (evita N+1).
     public interface IDoctorRepository : IRepository<Doctor>
     {
         Task<Doctor?> GetByIdWithEspecialidadAsync(int id);
