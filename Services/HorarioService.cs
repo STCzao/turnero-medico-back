@@ -144,7 +144,6 @@ namespace turnero_medico_backend.Services
 
             var doctorNombre = $"{doctor.Nombre} {doctor.Apellido}";
             var slots = new List<SlotDisponibleDto>();
-            var ahora = DateTime.Now;
 
             foreach (var horario in horarios)
             {
@@ -153,8 +152,10 @@ namespace turnero_medico_backend.Services
                 {
                     var fechaHoraSlot = fechaBase.Add(slot.ToTimeSpan());
 
-                    // Solo mostrar slots futuros y no ocupados
-                    if (fechaHoraSlot > ahora && !turnosOcupados.Contains(fechaHoraSlot))
+                    // Muestra todos los slots no ocupados del día.
+                    // El filtro de "no pasado" se delega al frontend (min=today en el datepicker)
+                    // para evitar problemas de timezone en producción (servidor UTC vs. cliente ART).
+                    if (!turnosOcupados.Contains(fechaHoraSlot))
                     {
                         slots.Add(new SlotDisponibleDto
                         {
