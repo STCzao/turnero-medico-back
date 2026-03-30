@@ -106,9 +106,7 @@ namespace turnero_medico_backend.Controllers
             return Ok(new { token, refreshToken, message });
         }
 
-        /// <summary>
-        /// Renueva el par access + refresh token. El refresh token anterior queda inválido.
-        /// </summary>
+        // Renueva el par access + refresh token. El refresh token anterior queda inválido (rotación).
         [HttpPost("refresh")]
         [AllowAnonymous]
         public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequestDto request)

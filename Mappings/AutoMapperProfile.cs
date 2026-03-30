@@ -41,19 +41,23 @@ namespace turnero_medico_backend.Mappings
                 .ForMember(dest => dest.Dni, opt => opt.MapFrom(src => src.Dni ?? string.Empty));
 
             // Turno mappings
+            // Nombres calculados desde las navigation properties; requieren que el repositorio
+            // haya hecho Include() antes de mapear — de lo contrario devuelven "No disponible".
             CreateMap<Turno, TurnoReadDto>()
-                .ForMember(dest => dest.PacienteNombre, 
+                .ForMember(dest => dest.PacienteNombre,
                     opt => opt.MapFrom(src => src.Paciente != null ? $"{src.Paciente.Nombre} {src.Paciente.Apellido}" : "No disponible"))
-                .ForMember(dest => dest.DoctorNombre, 
+                .ForMember(dest => dest.DoctorNombre,
                     opt => opt.MapFrom(src => src.Doctor != null ? $"{src.Doctor.Nombre} {src.Doctor.Apellido}" : "Sin asignar"))
                 .ForMember(dest => dest.EspecialidadNombre,
                     opt => opt.MapFrom(src => src.Especialidad != null ? src.Especialidad.Nombre : string.Empty));
 
+            // Estado, CreatedAt y CreatedByUserId son asignados por el servicio, no por el caller.
             CreateMap<TurnoCreateDto, Turno>()
-                .ForMember(dest => dest.Estado, opt => opt.Ignore())  // Estado siempre SolicitudPendiente
+                .ForMember(dest => dest.Estado, opt => opt.Ignore())  // siempre SolicitudPendiente
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedByUserId, opt => opt.Ignore());
 
+            // TurnoUpdateDto solo actualiza los campos no-nulos (PATCH parcial).
             CreateMap<TurnoUpdateDto, Turno>()
                 .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
 

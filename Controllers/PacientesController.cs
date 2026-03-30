@@ -25,9 +25,7 @@ namespace turnero_medico_backend.Controllers
             return Ok(pacientes);
         }
 
-        /// 
-        /// Obtiene el perfil del paciente autenticado actual
-
+        // Obtiene el perfil del paciente autenticado actual (sin necesitar conocer el ID numérico)
         [HttpGet("me")]
         public async Task<ActionResult<PacienteReadDto>> GetMyProfile()
         {
@@ -129,9 +127,8 @@ namespace turnero_medico_backend.Controllers
             return NoContent();
         }
 
-        /// <summary>
-        /// Exporta todos los datos personales del paciente autenticado (GDPR).
-        /// </summary>
+        // Exporta todos los datos personales del paciente autenticado (cumplimiento GDPR/LGPD).
+        // Incluye datos del perfil, cobertura y el historial completo de turnos.
         [HttpGet("me/export")]
         [Authorize(Roles = "Paciente")]
         public async Task<ActionResult<PacienteExportDto>> ExportarMisDatos()

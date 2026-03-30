@@ -1,5 +1,10 @@
 namespace turnero_medico_backend.Models.Entities
 {
+    // Representa al paciente del consultorio.
+    // Un paciente puede ser autónomo (UserId != null, mayor de 18) o dependiente
+    // (UserId == null, ResponsableId → cuenta del adulto responsable).
+    // El DNI es la clave de vinculación: si la secretaria crea el Paciente antes de que
+    // se registre la cuenta, el auto-registro lo detecta por DNI y vincula el UserId.
     public class Paciente
     {
         public int Id { get; set; }

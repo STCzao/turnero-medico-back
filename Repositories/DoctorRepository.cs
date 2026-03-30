@@ -6,6 +6,9 @@ using turnero_medico_backend.Repositories.Interfaces;
 
 namespace turnero_medico_backend.Repositories
 {
+    // Repositorio especializado para Doctor.
+    // Todos los métodos With* cargan Especialidad via Include() para evitar N+1 queries
+    // al mapear DoctorReadDto que necesita EspecialidadNombre.
     public class DoctorRepository(ApplicationDbContext context) : Repository<Doctor>(context), IDoctorRepository
     {
         private readonly ApplicationDbContext _ctx = context;

@@ -1,5 +1,9 @@
 namespace turnero_medico_backend.Models.Entities
 {
+    // Obra social o mutual de cobertura médica.
+    // La relación con Especialidades (muchos-a-muchos) determina qué especialidades cubre.
+    // TurnoService.CreateAsync valida que la OS del paciente cubra la especialidad solicitada
+    // antes de crear la solicitud de turno.
     public class ObraSocial
     {
         public int Id { get; set; }

@@ -6,6 +6,9 @@ using turnero_medico_backend.Repositories.Interfaces;
 
 namespace turnero_medico_backend.Repositories
 {
+    // Repositorio especializado para Paciente.
+    // Todos los métodos With* cargan ObraSocial via Include() para evitar N+1 queries
+    // al mapear PacienteReadDto que necesita ObraSocial.Nombre.
     public class PacienteRepository(ApplicationDbContext context) : Repository<Paciente>(context), IPacienteRepository
     {
         private readonly ApplicationDbContext _ctx = context;
@@ -26,6 +29,8 @@ namespace turnero_medico_backend.Repositories
                 .ToListAsync();
         }
 
+        // GetAllWithObraSocialPagedAsync no usa AsNoTracking porque la paginación
+        // necesita que EF trackee el conteo total correcto antes del Skip/Take.
         public async Task<(IEnumerable<Paciente> Items, int Total)> GetAllWithObraSocialPagedAsync(int page, int pageSize)
         {
             var query = _ctx.Pacientes.Include(p => p.ObraSocial);

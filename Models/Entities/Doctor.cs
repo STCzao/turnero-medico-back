@@ -1,11 +1,14 @@
 namespace turnero_medico_backend.Models.Entities
 
 {
+    // Representa al profesional médico. La Matrícula es única y se usa como clave de vinculación:
+    // si el Admin crea un Doctor vía CRUD y luego lo registra con cuenta, el registro existente
+    // se vincula por Matrícula en lugar de duplicarse.
     public class Doctor
     {
         public int Id {get; set;}
 
-        public string Matricula {get; set;} = string.Empty;
+        public string Matricula {get; set;} = string.Empty;  // Único — clave de vinculación con cuenta
 
         public string Nombre {get; set;} = string.Empty;
 
