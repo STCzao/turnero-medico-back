@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /d/Programacion/Personal/Practica/FullStack/Turnero-medico/turnero-medico-backend/Services/Interfaces -type f -name *.cs)",
+      "Bash(find /d/Programacion/Personal/Practica/FullStack/Turnero-medico/turnero-medico-backend/Repositories -type f -name *.cs)"
+    ]
+  }
+}

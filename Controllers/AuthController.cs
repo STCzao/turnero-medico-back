@@ -58,7 +58,8 @@ namespace turnero_medico_backend.Controllers
                 request.Apellido,
                 request.Matricula,
                 request.EspecialidadId,
-                request.Telefono
+                request.Telefono,
+                request.Dni
             );
 
             if (!success)
@@ -79,7 +80,8 @@ namespace turnero_medico_backend.Controllers
                 request.Email,
                 request.Password,
                 request.Nombre,
-                request.Apellido
+                request.Apellido,
+                request.Dni
             );
 
             if (!success)

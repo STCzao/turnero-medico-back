@@ -34,5 +34,8 @@ namespace turnero_medico_backend.DTOs.DoctorDTOs
         [Required(ErrorMessage = "El teléfono es obligatorio")]
         [RegularExpression(@"^[\d\s\-\+\(\)]{8,20}$", ErrorMessage = "El teléfono debe tener entre 8 y 20 caracteres")]
         public string Telefono { get; set; } = string.Empty;
+
+        [RegularExpression(@"^\d{7,8}$", ErrorMessage = "El DNI debe tener 7 u 8 dígitos numéricos")]
+        public string? Dni { get; set; }
     }
 }

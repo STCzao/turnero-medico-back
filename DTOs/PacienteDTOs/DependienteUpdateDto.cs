@@ -3,13 +3,10 @@ using turnero_medico_backend.Models.Entities;
 
 namespace turnero_medico_backend.DTOs.PacienteDTOs
 {
-    // Registro de dependiente (menor de edad) por parte del paciente responsable.
-    // NO crea cuenta de usuario — solo un registro en la tabla Pacientes.
-    public class DependienteCreateDto
+    public class DependienteUpdateDto
     {
-        [Required(ErrorMessage = "El DNI es obligatorio")]
-        [RegularExpression(@"^\d{7,8}$", ErrorMessage = "El DNI debe tener 7 u 8 dígitos numéricos")]
-        public string Dni { get; set; } = string.Empty;
+        [Required]
+        public int Id { get; set; }
 
         [Required(ErrorMessage = "El nombre es obligatorio")]
         [StringLength(50, MinimumLength = 2, ErrorMessage = "El nombre debe tener entre {2} y {1} caracteres")]
@@ -28,14 +25,14 @@ namespace turnero_medico_backend.DTOs.PacienteDTOs
         [RegularExpression(@"^[\d\s\-\+\(\)]{8,20}$", ErrorMessage = "El teléfono debe tener entre 8 y 20 caracteres")]
         public string? Telefono { get; set; }
 
-        //Datos de cobertura medica
-        [Range(0, 2, ErrorMessage = "TipoPago debe ser 0 (Obra Social), 1 (Particular) y 2 (SinCobertura)")]
+        // Cobertura médica 
+        [Range(0, 2, ErrorMessage = "TipoPago debe ser 0 (ObraSocial), 1 (Particular) o 2 (SinCobertura)")]
         public TipoPago TipoPago { get; set; } = TipoPago.ObraSocial;
 
         [Range(1, int.MaxValue, ErrorMessage = "El ID de la Obra Social debe ser válido")]
         public int? ObraSocialId { get; set; }
 
-        [StringLength(30, ErrorMessage = "El número de afiliado no puede exceder los 30 caracteres")]
+        [StringLength(30, ErrorMessage = "El número de afiliado no puede exceder 30 caracteres")]
         public string NumeroAfiliado { get; set; } = string.Empty;
 
         [StringLength(50, ErrorMessage = "El plan no puede exceder 50 caracteres")]

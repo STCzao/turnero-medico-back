@@ -22,5 +22,8 @@ namespace turnero_medico_backend.DTOs.AuthDTOs
         [Required(ErrorMessage = "El apellido es obligatorio")]
         [StringLength(100, MinimumLength = 2, ErrorMessage = "El apellido debe tener entre {2} y {1} caracteres")]
         public string Apellido { get; set; } = string.Empty;
+
+        [RegularExpression(@"^\d{7,8}$", ErrorMessage = "El DNI debe tener 7 u 8 dígitos numéricos")]
+        public string? Dni { get; set; }
     }
 }

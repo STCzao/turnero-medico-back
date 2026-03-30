@@ -139,13 +139,14 @@ namespace turnero_medico_backend.Services
         // (creado previamente vía CRUD), se vincula a la cuenta nueva.
         // ─────────────────────────────────────────────────────────────
         public async Task<(bool Success, string Message)> RegisterDoctorAsync(
-            string email, 
-            string password, 
-            string nombre, 
-            string apellido, 
-            string matricula, 
-            int especialidadId, 
-            string telefono)
+            string email,
+            string password,
+            string nombre,
+            string apellido,
+            string matricula,
+            int especialidadId,
+            string telefono,
+            string? dni = null)
         {
             // Verificar si el email ya tiene cuenta
             var userExists = await _userManager.FindByEmailAsync(email);
@@ -208,6 +209,7 @@ namespace turnero_medico_backend.Services
                         EspecialidadId = especialidadId,
                         Email = email,
                         Telefono = telefono,
+                        Dni = dni?.Trim() ?? string.Empty,
                         UserId = newUser.Id
                     };
 
@@ -236,7 +238,8 @@ namespace turnero_medico_backend.Services
             string email,
             string password,
             string nombre,
-            string apellido)
+            string apellido,
+            string? dni = null)
         {
             var userExists = await _userManager.FindByEmailAsync(email);
             if (userExists != null)
@@ -251,6 +254,7 @@ namespace turnero_medico_backend.Services
                     UserName = email,
                     Nombre = nombre,
                     Apellido = apellido,
+                    Dni = dni?.Trim() ?? string.Empty,
                     FechaRegistro = DateTime.UtcNow
                 };
 

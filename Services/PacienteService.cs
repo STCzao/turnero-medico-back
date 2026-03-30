@@ -196,6 +196,61 @@ namespace turnero_medico_backend.Services
             return _mapper.Map<PacienteReadDto>(creado);
         }
 
+        public async Task<PacienteReadDto> UpdateDependienteAsync(int id, DependienteUpdateDto dto)
+        {
+            var userId = _currentUserService.GetUserId();
+            if (string.IsNullOrEmpty(userId))
+                throw new UnauthorizedAccessException("No se pudo obtener el ID del usuario autenticado.");
+
+            var dependiente = await _pacienteRepository.GetByIdAsync(id)
+                ?? throw new KeyNotFoundException($"Dependiente con ID {id} no encontrado.");
+
+            if (dependiente.ResponsableId != userId)
+                throw new UnauthorizedAccessException("No tienes permisos para modificar este dependiente.");
+
+            dependiente.Nombre          = dto.Nombre;
+            dependiente.Apellido        = dto.Apellido;
+            dependiente.FechaNacimiento = dto.FechaNacimiento;
+            dependiente.Telefono        = dto.Telefono ?? string.Empty;
+            dependiente.TipoPago        = dto.TipoPago;
+            dependiente.ObraSocialId    = dto.ObraSocialId;
+            dependiente.NumeroAfiliado  = dto.NumeroAfiliado;
+            dependiente.PlanAfiliado    = dto.PlanAfiliado;
+
+            // Recalcular mayoría de edad por si cambió la fecha
+            var hoy = DateTime.UtcNow;
+            var edad = hoy.Year - dependiente.FechaNacimiento.Year;
+            if (dependiente.FechaNacimiento > hoy.AddYears(-edad)) edad--;
+            dependiente.EsMayorDeEdad = edad >= 18;
+
+            await _pacienteRepository.UpdateAsync(dependiente);
+            await _auditService.LogAsync(AuditAccion.Actualizar, "Dependiente", id.ToString());
+            return _mapper.Map<PacienteReadDto>(dependiente);
+        }
+
+        public async Task<bool> DeleteDependienteAsync(int id)
+        {
+            var userId = _currentUserService.GetUserId();
+            if (string.IsNullOrEmpty(userId))
+                throw new UnauthorizedAccessException("No se pudo obtener el ID del usuario autenticado.");
+
+            var dependiente = await _pacienteRepository.GetByIdAsync(id)
+                ?? throw new KeyNotFoundException($"Dependiente con ID {id} no encontrado.");
+
+            if (dependiente.ResponsableId != userId)
+                throw new UnauthorizedAccessException("No tienes permisos para eliminar este dependiente.");
+
+            var tieneTurnos = await _dbContext.Turnos.AnyAsync(t => t.PacienteId == id);
+            if (tieneTurnos)
+                throw new InvalidOperationException(
+                    "No se puede eliminar el dependiente porque tiene turnos asociados. Cancele los turnos primero.");
+
+            var deleted = await _pacienteRepository.DeleteAsync(id);
+            if (deleted)
+                await _auditService.LogAsync(AuditAccion.Eliminar, "Dependiente", id.ToString());
+            return deleted;
+        }
+
         // ─────────────────────────────────────────────────────────────
         // GDPR: exportar todos los datos del paciente autenticado
         // ─────────────────────────────────────────────────────────────

@@ -8,6 +8,7 @@ public class DoctorReadDto
     public string Apellido { get; set; } = string.Empty;
     public int EspecialidadId { get; set; }
     public string EspecialidadNombre { get; set; } = string.Empty;
+    public string Dni { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string Telefono { get; set; } = string.Empty;
 }

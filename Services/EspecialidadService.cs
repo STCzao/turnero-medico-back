@@ -41,7 +41,8 @@ namespace turnero_medico_backend.Services
 
         public async Task<EspecialidadReadDto> CreateAsync(EspecialidadCreateDto dto)
         {
-            var existente = await _repository.FindAsync(e => EF.Functions.ILike(e.Nombre, dto.Nombre));
+            var nombreLower = dto.Nombre.ToLower();
+            var existente = await _repository.FindAsync(e => e.Nombre.ToLower() == nombreLower);
             if (existente.Any())
                 throw new InvalidOperationException($"Ya existe una especialidad con el nombre '{dto.Nombre}'");
 
@@ -57,7 +58,8 @@ namespace turnero_medico_backend.Services
             var especialidad = await _repository.GetByIdAsync(id);
             if (especialidad == null) return null;
 
-            var duplicado = await _repository.FindAsync(e => EF.Functions.ILike(e.Nombre, dto.Nombre) && e.Id != id);
+            var nombreLower = dto.Nombre.ToLower();
+            var duplicado = await _repository.FindAsync(e => e.Nombre.ToLower() == nombreLower && e.Id != id);
             if (duplicado.Any())
                 throw new InvalidOperationException($"Ya existe una especialidad con el nombre '{dto.Nombre}'");
 
