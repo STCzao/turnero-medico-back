@@ -66,7 +66,8 @@ namespace turnero_medico_backend.Services
 
         public async Task<ObraSocialReadDto> CreateAsync(ObraSocialCreateDto dto)
         {
-            var existente = await _context.ObrasSociales.AnyAsync(o => o.Nombre == dto.Nombre);
+            var nombreNorm = dto.Nombre.Trim().ToLower();
+            var existente = await _context.ObrasSociales.AnyAsync(o => o.Nombre.ToLower() == nombreNorm);
             if (existente)
                 throw new InvalidOperationException($"Ya existe una obra social con el nombre '{dto.Nombre}'");
 
@@ -99,6 +100,11 @@ namespace turnero_medico_backend.Services
                 .FirstOrDefaultAsync(o => o.Id == id);
             if (obra == null) return null;
 
+            var nombreNorm = dto.Nombre.Trim().ToLower();
+            var nombreDuplicado = await _context.ObrasSociales.AnyAsync(o => o.Id != id && o.Nombre.ToLower() == nombreNorm);
+            if (nombreDuplicado)
+                throw new InvalidOperationException($"Ya existe una obra social con el nombre '{dto.Nombre}'");
+
             var especialidades = await _context.Especialidades
                 .Where(e => dto.EspecialidadIds.Contains(e.Id))
                 .ToListAsync();
@@ -106,7 +112,7 @@ namespace turnero_medico_backend.Services
             if (especialidades.Count != dto.EspecialidadIds.Distinct().Count())
                 throw new InvalidOperationException("Una o más especialidades proporcionadas no existen.");
 
-            obra.Nombre = dto.Nombre;
+            obra.Nombre = dto.Nombre.Trim();
             obra.Planes = dto.Planes;
             obra.Observaciones = dto.Observaciones;
             obra.Especialidades = especialidades;

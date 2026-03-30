@@ -77,6 +77,11 @@ namespace turnero_medico_backend.Data
                 .Property(o => o.Planes)
                 .HasColumnType("jsonb");
 
+            // ObraSocial: nombre único (case-insensitive vía collation en Postgres)
+            modelBuilder.Entity<ObraSocial>()
+                .HasIndex(o => o.Nombre)
+                .IsUnique();
+
             // Turno: concurrencia optimista
             modelBuilder.Entity<Turno>()
                 .Property(t => t.RowVersion)
