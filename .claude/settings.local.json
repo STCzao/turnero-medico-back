@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet --version)",
+      "Bash(dotnet --list-sdks)",
+      "Bash(cmd.exe /c \"dotnet --version\")",
+      "Bash(cmd.exe /c \"psql --version\")",
+      "Bash(powershell.exe -Command \"psql --version\")",
+      "Bash(powershell.exe -Command \"Get-Command pg_isready -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\")",
+      "Bash(powershell.exe -Command \"Test-Path ''C:\\\\Program Files\\\\dotnet\\\\dotnet.exe''\")",
+      "Bash(powershell.exe -Command \"Test-Path ''C:\\\\Program Files\\\\PostgreSQL''\")",
+      "Bash(powershell.exe -Command \"Get-ChildItem ''C:\\\\Program Files'' -Filter ''*dotnet*'' -ErrorAction SilentlyContinue | Select Name; Get-ChildItem ''C:\\\\Program Files'' -Filter ''*postgres*'' -ErrorAction SilentlyContinue | Select Name; Get-ChildItem ''C:\\\\Program Files \\(x86\\)'' -Filter ''*dotnet*'' -ErrorAction SilentlyContinue | Select Name\")",
+      "Bash(powershell.exe -Command \"Get-ChildItem ''D:\\\\'' -Filter ''*dotnet*'' -ErrorAction SilentlyContinue | Select Name; Get-ChildItem ''D:\\\\'' -Filter ''*postgres*'' -ErrorAction SilentlyContinue | Select Name\")",
+      "Bash(powershell.exe -Command \"& ''D:\\\\Aplicaciones\\\\Drivers\\\\dotnet\\\\dotnet.exe'' --version\")",
+      "Bash(powershell.exe -Command \"[Environment]::SetEnvironmentVariable\\(''Path'', [Environment]::GetEnvironmentVariable\\(''Path'', ''User''\\) + '';D:\\\\Aplicaciones\\\\Drivers\\\\dotnet'', ''User''\\)\")",
+      "Bash(powershell.exe -Command \"[Environment]::GetEnvironmentVariable\\(''Path'', ''User''\\)\")",
+      "Bash(dotnet restore:*)",
+      "Bash(dotnet nuget:*)",
+      "Bash(dotnet build:*)",
+      "Bash(cd /d/Programacion/Practica/\"Full Stack\")"
+    ]
+  }
+}

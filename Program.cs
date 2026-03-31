@@ -20,6 +20,8 @@ using turnero_medico_backend.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+
 // ─── Serilog como provider de logging ────────────────────────────────────────
 // Note: no bootstrap logger — avoids Serilog's ReloadableLogger.Freeze() issue
 // in integration tests where Program.cs may be invoked multiple times.

@@ -25,6 +25,9 @@ namespace turnero_medico_backend.DTOs.TurnoDTOs
         // ===== Datos declarativos de cobertura =====
         // El paciente declara su cobertura. La secretaria verifica contra la realidad.
 
+        [Range(1, int.MaxValue, ErrorMessage = "El ID de obra social debe ser un número válido")]
+        public int? ObraSocialId { get; set; }
+
         [StringLength(30, ErrorMessage = "El número de afiliado declarado no puede exceder 30 caracteres")]
         public string? NumeroAfiliadoDeclarado { get; set; }
 

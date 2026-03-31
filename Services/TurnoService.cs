@@ -179,17 +179,17 @@ namespace turnero_medico_backend.Services
                 ?? throw new InvalidOperationException($"La especialidad con ID {dto.EspecialidadId} no existe.");
 
             // Validar que la obra social del paciente cubra la especialidad solicitada (solo si tiene OS activa)
-            if (paciente.TipoPago == TipoPago.ObraSocial && paciente.ObraSocialId.HasValue)
+            if (dto.ObraSocialId.HasValue)
             {
-                var cubre = await _dbContext.ObrasSociales
-                    .Where(o => o.Id == paciente.ObraSocialId.Value)
-                    .SelectMany(o => o.Especialidades)
-                    .AnyAsync(e => e.Id == dto.EspecialidadId);
+                var obraSocial = await _dbContext.ObrasSociales
+                .Where(o => o.Id == dto.ObraSocialId.Value)
+                .FirstOrDefaultAsync()
+                ?? throw new InvalidOperationException($"La obra social con Id {dto.ObraSocialId} no existe.");
+
+                var cubre = obraSocial.Especialidades.Any(e => e.Id == dto.EspecialidadId);
 
                 if (!cubre)
-                    throw new InvalidOperationException(
-                        "La obra social del paciente no cubre la especialidad solicitada. " +
-                        "Puede solicitar el turno como particular.");
+                    throw new InvalidOperationException("La obra social seleccionada no cubre la especialidad solicitada.");
             }
 
             if (string.IsNullOrEmpty(userId))
@@ -197,16 +197,16 @@ namespace turnero_medico_backend.Services
 
             var turno = new Turno
             {
-                PacienteId              = dto.PacienteId,
-                DoctorId                = dto.DoctorId,
-                EspecialidadId          = dto.EspecialidadId,
-                Motivo                  = dto.Motivo,
-                Estado                  = EstadoTurno.SolicitudPendiente,
-                CreatedByUserId         = userId,
-                CreatedAt               = DateTime.UtcNow,
-                ObraSocialId            = paciente.ObraSocialId,
+                PacienteId = dto.PacienteId,
+                DoctorId = dto.DoctorId,
+                EspecialidadId = dto.EspecialidadId,
+                Motivo = dto.Motivo,
+                Estado = EstadoTurno.SolicitudPendiente,
+                CreatedByUserId = userId,
+                CreatedAt = DateTime.UtcNow,
+                ObraSocialId = dto.ObraSocialId,
                 NumeroAfiliadoDeclarado = dto.NumeroAfiliadoDeclarado,
-                PlanAfiliadoDeclarado   = dto.PlanAfiliadoDeclarado,
+                PlanAfiliadoDeclarado = dto.PlanAfiliadoDeclarado,
             };
 
             var created = await _turnoRepository.AddAsync(turno);
@@ -298,7 +298,7 @@ namespace turnero_medico_backend.Services
             if (doctor.EspecialidadId != turno.EspecialidadId)
             {
                 var espDoctor = await _especialidadRepository.GetByIdAsync(doctor.EspecialidadId);
-                var espTurno  = await _especialidadRepository.GetByIdAsync(turno.EspecialidadId);
+                var espTurno = await _especialidadRepository.GetByIdAsync(turno.EspecialidadId);
                 throw new InvalidOperationException(
                     $"El doctor '{doctor.Nombre} {doctor.Apellido}' es especialista en '{espDoctor?.Nombre}', "
                     + $"pero el turno requiere '{espTurno?.Nombre}'.");
@@ -321,8 +321,8 @@ namespace turnero_medico_backend.Services
 
             // Verificar conflictos usando rango de tiempo (no solo igualdad exacta).
             // Dos turnos se superponen si sus intervalos [FechaHora, FechaHora+duracion) se tocan.
-            var duracion   = horario.DuracionMinutos;
-            var slotFin    = dto.FechaHora.AddMinutes(duracion);
+            var duracion = horario.DuracionMinutos;
+            var slotFin = dto.FechaHora.AddMinutes(duracion);
             var slotInicio = dto.FechaHora.AddMinutes(-duracion);
 
             var hayConflicto = await _dbContext.Turnos.AnyAsync(t =>
@@ -339,12 +339,12 @@ namespace turnero_medico_backend.Services
 
             var userId = _currentUserService.GetUserId();
 
-            turno.DoctorId        = doctorId;
-            turno.FechaHora       = dto.FechaHora;
-            turno.Estado          = EstadoTurno.Confirmado;
+            turno.DoctorId = doctorId;
+            turno.FechaHora = dto.FechaHora;
+            turno.Estado = EstadoTurno.Confirmado;
             turno.NotasSecretaria = dto.NotasSecretaria;
             turno.ConfirmadaPorId = userId;
-            turno.FechaGestion    = DateTime.UtcNow;
+            turno.FechaGestion = DateTime.UtcNow;
 
             await _turnoRepository.UpdateAsync(turno);
             await _auditService.LogAsync(AuditAccion.Confirmar, "Turno", turnoId.ToString());
@@ -371,10 +371,10 @@ namespace turnero_medico_backend.Services
 
             var userId = _currentUserService.GetUserId();
 
-            turno.Estado          = EstadoTurno.Rechazado;
-            turno.MotivoRechazo   = dto.MotivoRechazo;
+            turno.Estado = EstadoTurno.Rechazado;
+            turno.MotivoRechazo = dto.MotivoRechazo;
             turno.ConfirmadaPorId = userId;
-            turno.FechaGestion    = DateTime.UtcNow;
+            turno.FechaGestion = DateTime.UtcNow;
 
             await _turnoRepository.UpdateAsync(turno);
             await _auditService.LogAsync(AuditAccion.Rechazar, "Turno", turnoId.ToString());
@@ -401,8 +401,8 @@ namespace turnero_medico_backend.Services
 
             if (userRole == "Admin" || userRole == "Secretaria")
             {
-                turno.Estado             = EstadoTurno.Cancelado;
-                turno.MotivoCancelacion  = dto.Motivo;
+                turno.Estado = EstadoTurno.Cancelado;
+                turno.MotivoCancelacion = dto.Motivo;
                 await _turnoRepository.UpdateAsync(turno);
                 await _auditService.LogAsync(AuditAccion.Cancelar, "Turno", turnoId.ToString());
                 var canceladoAdmin = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
@@ -421,8 +421,8 @@ namespace turnero_medico_backend.Services
                 if (turno.Estado != EstadoTurno.Confirmado)
                     throw new InvalidOperationException("El doctor solo puede cancelar turnos confirmados.");
 
-                turno.Estado             = EstadoTurno.Cancelado;
-                turno.MotivoCancelacion  = dto.Motivo;
+                turno.Estado = EstadoTurno.Cancelado;
+                turno.MotivoCancelacion = dto.Motivo;
                 await _turnoRepository.UpdateAsync(turno);
                 await _auditService.LogAsync(AuditAccion.Cancelar, "Turno", turnoId.ToString());
                 var canceladoDoctor = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
@@ -437,8 +437,8 @@ namespace turnero_medico_backend.Services
                 if (paciente.UserId != userId && paciente.ResponsableId != userId)
                     throw new UnauthorizedAccessException("No tienes permisos para cancelar este turno.");
 
-                turno.Estado             = EstadoTurno.Cancelado;
-                turno.MotivoCancelacion  = dto.Motivo;
+                turno.Estado = EstadoTurno.Cancelado;
+                turno.MotivoCancelacion = dto.Motivo;
                 await _turnoRepository.UpdateAsync(turno);
                 await _auditService.LogAsync(AuditAccion.Cancelar, "Turno", turnoId.ToString());
                 var canceladoPaciente = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
