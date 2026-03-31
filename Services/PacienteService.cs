@@ -237,7 +237,8 @@ namespace turnero_medico_backend.Services
             var dependiente = await _pacienteRepository.GetByIdAsync(id)
                 ?? throw new KeyNotFoundException($"Dependiente con ID {id} no encontrado.");
 
-            if (dependiente.ResponsableId != userId)
+            var esAdmin = _currentUserService.GetUserRole() == "Admin";
+            if (!esAdmin && dependiente.ResponsableId != userId)
                 throw new UnauthorizedAccessException("No tienes permisos para eliminar este dependiente.");
 
             var tieneTurnos = await _dbContext.Turnos.AnyAsync(t => t.PacienteId == id);

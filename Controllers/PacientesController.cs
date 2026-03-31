@@ -119,8 +119,9 @@ namespace turnero_medico_backend.Controllers
             return Ok(dependiente);
         }
 
+
         [HttpDelete("dependientes/{id}")]
-        [Authorize(Roles = "Paciente")]
+        [Authorize(Roles = "Paciente,Admin")]
         public async Task<ActionResult> DeleteDependiente(int id)
         {
             await _service.DeleteDependienteAsync(id);

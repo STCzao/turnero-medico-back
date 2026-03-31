@@ -29,6 +29,7 @@ namespace turnero_medico_backend.Mappings
 
             CreateMap<PacienteUpdateDto, Paciente>();
 
+
             // Doctor mappings
             CreateMap<Doctor, DoctorReadDto>()
                 .ForMember(dest => dest.EspecialidadNombre,
