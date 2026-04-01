@@ -38,7 +38,11 @@ namespace turnero_medico_backend.Models.Entities
 
         // FK → AspNetUsers.Id. Une Paciente con su cuenta de usuario (null si es dependiente sin cuenta).
         public string? UserId { get; set; }
-        
+
+        // ===== Borrado lógico =====
+        public bool IsDeleted { get; set; } = false;
+        public DateTime? DeletedAt { get; set; }
+
         // ===== Relaciones =====
         public virtual ICollection<Turno> Turnos { get; set; } = new List<Turno>();
         

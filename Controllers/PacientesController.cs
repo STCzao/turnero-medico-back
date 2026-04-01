@@ -62,7 +62,7 @@ namespace turnero_medico_backend.Controllers
 
 
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin,Secretaria,Paciente")]
         public async Task<ActionResult<PacienteReadDto>> Update(int id, PacienteUpdateDto dto)
         {
             if (!ModelState.IsValid)
@@ -77,7 +77,7 @@ namespace turnero_medico_backend.Controllers
 
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin,Secretaria")]
         public async Task<ActionResult> Delete(int id)
         {
             await _service.DeleteAsync(id);
@@ -86,7 +86,7 @@ namespace turnero_medico_backend.Controllers
 
         // Dependientes del paciente autenticado
         [HttpGet("mis-dependientes")]
-        [Authorize(Roles = "Paciente")]
+        [Authorize(Roles = "Paciente,Admin,Secretaria")]
         public async Task<ActionResult<PagedResultDto<PacienteReadDto>>> GetMisDependientes([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {
             var dependientes = await _service.GetMisDependientesAsync(page, pageSize);
@@ -95,7 +95,7 @@ namespace turnero_medico_backend.Controllers
 
         // Registrar un dependiente (menor sin cuenta de usuario)
         [HttpPost("dependientes")]
-        [Authorize(Roles = "Paciente")]
+        [Authorize(Roles = "Paciente,Admin,Secretaria")]
         public async Task<ActionResult<PacienteReadDto>> CreateDependiente(DependienteCreateDto dto)
         {
             if (!ModelState.IsValid)
@@ -106,7 +106,7 @@ namespace turnero_medico_backend.Controllers
         }
 
         [HttpPut("dependientes/{id}")]
-        [Authorize(Roles = "Paciente")]
+        [Authorize(Roles = "Paciente,Admin,Secretaria")]
         public async Task<ActionResult<PacienteReadDto>> UpdateDependiente(int id, DependienteUpdateDto dto)
         {
             if (!ModelState.IsValid)
@@ -121,7 +121,7 @@ namespace turnero_medico_backend.Controllers
 
 
         [HttpDelete("dependientes/{id}")]
-        [Authorize(Roles = "Paciente,Admin")]
+        [Authorize(Roles = "Paciente,Admin,Secretaria")]
         public async Task<ActionResult> DeleteDependiente(int id)
         {
             await _service.DeleteDependienteAsync(id);
@@ -131,7 +131,7 @@ namespace turnero_medico_backend.Controllers
         // Exporta todos los datos personales del paciente autenticado (cumplimiento GDPR/LGPD).
         // Incluye datos del perfil, cobertura y el historial completo de turnos.
         [HttpGet("me/export")]
-        [Authorize(Roles = "Paciente")]
+        [Authorize(Roles = "Paciente,Admin,Secretaria")]
         public async Task<ActionResult<PacienteExportDto>> ExportarMisDatos()
         {
             var export = await _service.ExportarMisDatosAsync();

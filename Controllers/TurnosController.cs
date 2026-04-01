@@ -30,6 +30,7 @@ namespace turnero_medico_backend.Controllers
         }
 
         [HttpGet("paciente/{pacienteId}")]
+        [Authorize(Roles = "Admin,Secretaria")]
         public async Task<ActionResult<IEnumerable<TurnoReadDto>>> GetByPaciente(
             int pacienteId,
             [FromQuery] string? estado = null)
@@ -42,6 +43,7 @@ namespace turnero_medico_backend.Controllers
         }
 
         [HttpGet("doctor/{doctorId}")]
+        [Authorize(Roles = "Admin,Secretaria")]
         public async Task<ActionResult<IEnumerable<TurnoReadDto>>> GetByDoctor(
             int doctorId,
             [FromQuery] string? estado = null)
@@ -54,6 +56,7 @@ namespace turnero_medico_backend.Controllers
         }
 
         [HttpGet("{id}")]
+        [Authorize(Roles = "Admin,Secretaria")]
         public async Task<ActionResult<TurnoReadDto>> GetById(int id)
         {
             var turno = await _service.GetByIdAsync(id);
@@ -101,6 +104,7 @@ namespace turnero_medico_backend.Controllers
 
         // Cancelacion: Paciente, Doctor, Secretaria o Admin con reglas propias
         [HttpPost("{id}/cancelar")]
+        [Authorize(Roles = "Paciente,Doctor,Secretaria,Admin")]
         public async Task<ActionResult<TurnoReadDto>> Cancelar(int id, CancelarTurnoDto dto)
         {
             if (!ModelState.IsValid)
@@ -126,7 +130,7 @@ namespace turnero_medico_backend.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin,Secretaria,Paciente")]
         public async Task<ActionResult> Delete(int id)
         {
             await _service.DeleteAsync(id);
@@ -167,6 +171,7 @@ namespace turnero_medico_backend.Controllers
 
         // Historial clínico — turnos completados de un paciente
         [HttpGet("paciente/{pacienteId}/historial")]
+        [Authorize(Roles = "Admin,Secretaria,Paciente")]
         public async Task<ActionResult<IEnumerable<TurnoReadDto>>> GetHistorial(int pacienteId)
         {
             var turnos = await _service.GetHistorialAsync(pacienteId);
