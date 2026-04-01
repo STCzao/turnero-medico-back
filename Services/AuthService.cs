@@ -110,7 +110,7 @@ namespace turnero_medico_backend.Services
                         Telefono = telefono,
                         FechaNacimiento = fechaNacimiento,
                         EsMayorDeEdad = esMayorDeEdad,
-                        TipoPago = TipoPago.SinCobertura,
+                        TipoPago = TipoPago.Particular,
                         NumeroAfiliado = string.Empty,
                         UserId = newUser.Id
                     };

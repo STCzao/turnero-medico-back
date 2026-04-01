@@ -41,12 +41,27 @@ namespace turnero_medico_backend.Middleware
                     response.Detail = "El recurso fue modificado por otro proceso. Reintente la operación.";
                     break;
 
-                case DbUpdateException:
-                    // Error de base de datos: violación de FK (eliminar entidad con dependencias), unique constraint, etc.
+                case DbUpdateException dbEx:
+                    // Error de base de datos: discriminamos entre unique constraint y FK violation
+                    // usando el código de error PostgreSQL del inner exception (23505 = unique, 23503 = FK).
                     context.Response.StatusCode = StatusCodes.Status409Conflict;
                     response.StatusCode = HttpStatusCode.Conflict;
-                    response.Message = "Conflicto de integridad";
-                    response.Detail = "No se puede completar la operación porque el recurso tiene datos asociados o violaría una restricción única.";
+                    var innerMsg = dbEx.InnerException?.Message ?? string.Empty;
+                    if (innerMsg.Contains("23505") || innerMsg.Contains("duplicate key"))
+                    {
+                        response.Message = "Dato duplicado";
+                        response.Detail = "Ya existe un registro con ese valor. Verifique los datos ingresados (por ejemplo, el DNI).";
+                    }
+                    else if (innerMsg.Contains("23503") || innerMsg.Contains("foreign key"))
+                    {
+                        response.Message = "Referencia inválida";
+                        response.Detail = "Uno de los valores de referencia no existe (por ejemplo, la Obra Social indicada).";
+                    }
+                    else
+                    {
+                        response.Message = "Conflicto de integridad";
+                        response.Detail = "No se puede completar la operación porque el recurso tiene datos asociados o violaría una restricción única.";
+                    }
                     break;
 
                 case ArgumentNullException:

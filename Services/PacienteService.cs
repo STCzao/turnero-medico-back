@@ -180,6 +180,13 @@ namespace turnero_medico_backend.Services
                 throw new InvalidOperationException(
                     "Los pacientes dependientes no pueden registrar sus propios dependientes.");
 
+            if (dto.ObraSocialId.HasValue)
+            {
+                var osExiste = await _dbContext.ObrasSociales.AnyAsync(o => o.Id == dto.ObraSocialId.Value);
+                if (!osExiste)
+                    throw new KeyNotFoundException($"La obra social con ID {dto.ObraSocialId} no existe.");
+            }
+
             var dependiente = new Paciente
             {
                 Dni = dto.Dni,
@@ -189,7 +196,11 @@ namespace turnero_medico_backend.Services
                 Telefono = dto.Telefono ?? string.Empty,
                 ResponsableId = userId,
                 EsMayorDeEdad = false,
-                UserId = null // Los dependientes no tienen cuenta de usuario
+                UserId = null, // Los dependientes no tienen cuenta de usuario
+                TipoPago = dto.TipoPago,
+                ObraSocialId = dto.ObraSocialId,
+                NumeroAfiliado = dto.NumeroAfiliado,
+                PlanAfiliado = dto.PlanAfiliado
             };
 
             var creado = await _pacienteRepository.AddAsync(dependiente);
@@ -279,9 +290,8 @@ namespace turnero_medico_backend.Services
 
             var tipoPagoLabel = paciente.TipoPago switch
             {
-                TipoPago.ObraSocial   => "ObraSocial",
-                TipoPago.Particular   => "Particular",
-                _                     => "SinCobertura"
+                TipoPago.ObraSocial => "ObraSocial",
+                _                   => "Particular"
             };
 
             return new PacienteExportDto

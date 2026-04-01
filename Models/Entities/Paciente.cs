@@ -48,8 +48,7 @@ namespace turnero_medico_backend.Models.Entities
     // ===== ENUM: Tipos de Pago =====
     public enum TipoPago
     {
-        ObraSocial,
-        Particular,
-        SinCobertura
+        ObraSocial,   // 0: tiene obra social
+        Particular,   // 1: sin OS, paga de su bolsillo
     }
 }

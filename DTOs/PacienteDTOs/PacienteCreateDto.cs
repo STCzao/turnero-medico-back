@@ -34,8 +34,8 @@ namespace turnero_medico_backend.DTOs.PacienteDTOs
         public DateTime FechaNacimiento { get; set; }
 
         // ===== Nuevos campos para Familia & ObraSocial =====
-        [Range(0, 2, ErrorMessage = "TipoPago debe ser 0(ObraSocial), 1(Particular) o 2(SinCobertura)")]
-        public int TipoPago { get; set; } = 0;  // 0=ObraSocial (default), 1=Particular, 2=SinCobertura
+        [Range(0, 1, ErrorMessage = "TipoPago debe ser 0 (ObraSocial) o 1 (Particular)")]
+        public int TipoPago { get; set; } = 0;  // 0=ObraSocial (default), 1=Particular
 
         [Range(1, int.MaxValue, ErrorMessage = "El ID de la Obra Social debe ser válido")]
         public int? ObraSocialId { get; set; }  // Opcional, solo si TipoPago=0
