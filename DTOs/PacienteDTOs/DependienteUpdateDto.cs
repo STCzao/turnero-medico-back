@@ -26,7 +26,7 @@ namespace turnero_medico_backend.DTOs.PacienteDTOs
         public string? Telefono { get; set; }
 
         // Cobertura médica 
-        [Range(0, 2, ErrorMessage = "TipoPago debe ser 0 (ObraSocial), 1 (Particular) o 2 (SinCobertura)")]
+        [Range(0, 1, ErrorMessage = "TipoPago debe ser 0 (ObraSocial) o 1 (Particular)")]
         public TipoPago TipoPago { get; set; } = TipoPago.ObraSocial;
 
         [Range(1, int.MaxValue, ErrorMessage = "El ID de la Obra Social debe ser válido")]
