@@ -8,8 +8,8 @@ using turnero_medico_backend.Services.Interfaces;
 namespace turnero_medico_backend.Controllers;
 
 // CRUD de secretarias — exclusivo para Admin.
-// Las secretarias no tienen entidad de dominio propia; sus datos viven en AspNetUsers
-// con el rol "Secretaria". El registro se hace vía /api/auth/register-secretaria.
+// Sigue el mismo patrón que DoctoresController:
+// el Admin crea el registro (POST) y luego registra la cuenta vía /api/auth/register-secretaria.
 [ApiVersion("1.0")]
 [ApiController]
 [Route("api/[controller]")]
@@ -26,7 +26,7 @@ public class SecretariasController(ISecretariaService _service) : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<SecretariaReadDto>> GetById(string id)
+    public async Task<ActionResult<SecretariaReadDto>> GetById(int id)
     {
         var secretaria = await _service.GetByIdAsync(id);
         if (secretaria == null)
@@ -35,8 +35,18 @@ public class SecretariasController(ISecretariaService _service) : ControllerBase
         return Ok(secretaria);
     }
 
+    [HttpPost]
+    public async Task<ActionResult<SecretariaReadDto>> Create(SecretariaCreateDto dto)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var secretaria = await _service.CreateAsync(dto);
+        return CreatedAtAction(nameof(GetById), new { id = secretaria.Id }, secretaria);
+    }
+
     [HttpPut("{id}")]
-    public async Task<ActionResult<SecretariaReadDto>> Update(string id, SecretariaUpdateDto dto)
+    public async Task<ActionResult<SecretariaReadDto>> Update(int id, SecretariaUpdateDto dto)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
@@ -49,8 +59,7 @@ public class SecretariasController(ISecretariaService _service) : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
-    public async Task<ActionResult> Delete(string id)
+    public async Task<ActionResult> Delete(int id)
     {
         await _service.DeleteAsync(id);
         return NoContent();

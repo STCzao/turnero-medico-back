@@ -12,8 +12,8 @@ namespace turnero_medico_backend.Services.Interfaces
         // Solo Admin. Vincula por Matrícula si el doctor ya existe en el catálogo.
         Task<(bool Success, string Message)> RegisterDoctorAsync(string email, string password, string nombre, string apellido, string matricula, int especialidadId, string telefono, string? dni = null);
 
-        // Solo Admin. Crea cuenta con rol Secretaria sin entidad de dominio asociada.
-        Task<(bool Success, string Message)> RegisterSecretariaAsync(string email, string password, string nombre, string apellido, string? dni = null);
+        // Solo Admin. Vincula por DNI si la secretaria ya existe en el catálogo.
+        Task<(bool Success, string Message)> RegisterSecretariaAsync(string email, string password, string nombre, string apellido, string dni);
 
         // Devuelve access token (30 min) y refresh token (30 días). Ambos en texto plano.
         // El refresh token se almacena en DB como SHA-256, nunca en claro.

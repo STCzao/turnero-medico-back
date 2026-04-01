@@ -227,6 +227,9 @@ namespace turnero_medico_backend.Migrations
                     b.Property<int?>("PacienteId")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("SecretariaId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("PasswordHash")
                         .HasColumnType("text");
 
@@ -496,6 +499,47 @@ namespace turnero_medico_backend.Migrations
                     b.ToTable("Pacientes");
                 });
 
+            modelBuilder.Entity("turnero_medico_backend.Models.Entities.Secretaria", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Apellido")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Dni")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Telefono")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("UserId")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Dni")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Secretarias");
+                });
+
             modelBuilder.Entity("turnero_medico_backend.Models.Entities.Turno", b =>
                 {
                     b.Property<int>("Id")
@@ -675,6 +719,14 @@ namespace turnero_medico_backend.Migrations
                     b.HasOne("turnero_medico_backend.Models.Entities.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("ResponsableId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("turnero_medico_backend.Models.Entities.Secretaria", b =>
+                {
+                    b.HasOne("turnero_medico_backend.Models.Entities.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.SetNull);
                 });
 
