@@ -7,6 +7,7 @@ public interface ISecretariaService
 {
     Task<PagedResultDto<SecretariaReadDto>> GetAllPagedAsync(int page, int pageSize);
     Task<SecretariaReadDto?> GetByIdAsync(int id);
+    Task<SecretariaReadDto?> GetMyProfileAsync();
     Task<SecretariaReadDto> CreateAsync(SecretariaCreateDto dto);
     Task<SecretariaReadDto> UpdateAsync(int id, SecretariaUpdateDto dto);
     Task<bool> DeleteAsync(int id);

@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using turnero_medico_backend.Data;
 using turnero_medico_backend.DTOs.Common;
 using turnero_medico_backend.DTOs.SecretariaDTOs;
 using turnero_medico_backend.Models.Entities;
@@ -13,11 +15,15 @@ namespace turnero_medico_backend.Services;
 public class SecretariaService(
     ISecretariaRepository repository,
     UserManager<ApplicationUser> userManager,
-    IAuditService auditService) : ISecretariaService
+    ICurrentUserService currentUserService,
+    IAuditService auditService,
+    ApplicationDbContext dbContext) : ISecretariaService
 {
     private readonly ISecretariaRepository _repository = repository;
     private readonly UserManager<ApplicationUser> _userManager = userManager;
+    private readonly ICurrentUserService _currentUserService = currentUserService;
     private readonly IAuditService _auditService = auditService;
+    private readonly ApplicationDbContext _dbContext = dbContext;
 
     public async Task<PagedResultDto<SecretariaReadDto>> GetAllPagedAsync(int page, int pageSize)
     {
@@ -38,9 +44,18 @@ public class SecretariaService(
         return secretaria == null ? null : ToDto(secretaria);
     }
 
+    public async Task<SecretariaReadDto?> GetMyProfileAsync()
+    {
+        var userId = _currentUserService.GetUserId();
+        if (string.IsNullOrEmpty(userId)) return null;
+
+        var secretaria = await _dbContext.Secretarias
+            .FirstOrDefaultAsync(s => s.UserId == userId);
+        return secretaria == null ? null : ToDto(secretaria);
+    }
+
     public async Task<SecretariaReadDto> CreateAsync(SecretariaCreateDto dto)
     {
-        // Verificar DNI único
         var existentes = await _repository.FindAsync(s => s.Dni == dto.Dni.Trim());
         if (existentes.Any())
             throw new InvalidOperationException("Ya existe una secretaria con ese DNI.");
@@ -64,38 +79,47 @@ public class SecretariaService(
         var secretaria = await _repository.GetByIdAsync(id)
             ?? throw new KeyNotFoundException($"Secretaria con ID {id} no encontrada.");
 
-        // Verificar DNI único si cambió
-        if (dto.Dni != null && dto.Dni.Trim() != secretaria.Dni)
-        {
-            var existentes = await _repository.FindAsync(s => s.Dni == dto.Dni.Trim() && s.Id != id);
-            if (existentes.Any())
-                throw new InvalidOperationException("Ya existe una secretaria con ese DNI.");
-        }
-
         secretaria.Nombre = dto.Nombre.Trim();
         secretaria.Apellido = dto.Apellido.Trim();
         secretaria.Email = dto.Email.Trim();
         secretaria.Telefono = dto.Telefono.Trim();
-        if (dto.Dni != null) secretaria.Dni = dto.Dni.Trim();
 
-        // Sincronizar datos en AspNetUsers si tiene cuenta vinculada
-        if (!string.IsNullOrEmpty(secretaria.UserId))
+        // Sincronizar datos en AspNetUsers si tiene cuenta vinculada.
+        // Ambas operaciones dentro de una transacción para evitar inconsistencias.
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync();
+        try
         {
-            var user = await _userManager.FindByIdAsync(secretaria.UserId);
-            if (user != null)
+            if (!string.IsNullOrEmpty(secretaria.UserId))
             {
-                user.Nombre = secretaria.Nombre;
-                user.Apellido = secretaria.Apellido;
-                user.Email = secretaria.Email;
-                user.UserName = secretaria.Email;
-                user.NormalizedEmail = secretaria.Email.ToUpperInvariant();
-                user.NormalizedUserName = secretaria.Email.ToUpperInvariant();
-                if (dto.Dni != null) user.Dni = secretaria.Dni;
-                await _userManager.UpdateAsync(user);
+                var user = await _userManager.FindByIdAsync(secretaria.UserId);
+                if (user != null)
+                {
+                    user.Nombre = secretaria.Nombre;
+                    user.Apellido = secretaria.Apellido;
+                    user.Email = secretaria.Email;
+                    user.UserName = secretaria.Email;
+                    user.NormalizedEmail = secretaria.Email.ToUpperInvariant();
+                    user.NormalizedUserName = secretaria.Email.ToUpperInvariant();
+
+                    var result = await _userManager.UpdateAsync(user);
+                    if (!result.Succeeded)
+                    {
+                        await transaction.RollbackAsync();
+                        var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                        throw new InvalidOperationException($"Error al actualizar la cuenta de usuario: {errors}");
+                    }
+                }
             }
+
+            await _repository.UpdateAsync(secretaria);
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
         }
 
-        await _repository.UpdateAsync(secretaria);
         await _auditService.LogAsync(AuditAccion.Actualizar, "Secretaria", id.ToString());
         return ToDto(secretaria);
     }
@@ -105,18 +129,41 @@ public class SecretariaService(
         var secretaria = await _repository.GetByIdAsync(id)
             ?? throw new KeyNotFoundException($"Secretaria con ID {id} no encontrada.");
 
-        // Si tiene cuenta vinculada, eliminarla también
-        if (!string.IsNullOrEmpty(secretaria.UserId))
+        // Ambas operaciones dentro de una transacción.
+        // Se elimina la entidad primero para que ON DELETE SET NULL limpie UserId
+        // antes de intentar borrar el usuario de Identity.
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync();
+        try
         {
-            var user = await _userManager.FindByIdAsync(secretaria.UserId);
-            if (user != null)
-                await _userManager.DeleteAsync(user);
+            var userId = secretaria.UserId;
+
+            await _repository.DeleteAsync(id);
+
+            if (!string.IsNullOrEmpty(userId))
+            {
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user != null)
+                {
+                    var result = await _userManager.DeleteAsync(user);
+                    if (!result.Succeeded)
+                    {
+                        await transaction.RollbackAsync();
+                        var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                        throw new InvalidOperationException($"Error al eliminar la cuenta de usuario: {errors}");
+                    }
+                }
+            }
+
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
         }
 
-        var deleted = await _repository.DeleteAsync(id);
-        if (deleted)
-            await _auditService.LogAsync(AuditAccion.Eliminar, "Secretaria", id.ToString());
-        return deleted;
+        await _auditService.LogAsync(AuditAccion.Eliminar, "Secretaria", id.ToString());
+        return true;
     }
 
     private static SecretariaReadDto ToDto(Secretaria s) => new()

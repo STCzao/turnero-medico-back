@@ -27,7 +27,8 @@ namespace turnero_medico_backend.Mappings
 
             CreateMap<PacienteCreateDto, Paciente>();
 
-            CreateMap<PacienteUpdateDto, Paciente>();
+            CreateMap<PacienteUpdateDto, Paciente>()
+                .ForMember(dest => dest.Dni, opt => opt.Ignore());
 
 
             // Doctor mappings
@@ -39,7 +40,7 @@ namespace turnero_medico_backend.Mappings
                 .ForMember(dest => dest.Dni, opt => opt.MapFrom(src => src.Dni ?? string.Empty));
 
             CreateMap<DoctorUpdateDto, Doctor>()
-                .ForMember(dest => dest.Dni, opt => opt.MapFrom(src => src.Dni ?? string.Empty));
+                .ForMember(dest => dest.Dni, opt => opt.Ignore());
 
             // Turno mappings
             // Nombres calculados desde las navigation properties; requieren que el repositorio
