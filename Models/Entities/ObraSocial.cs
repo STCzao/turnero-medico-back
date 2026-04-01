@@ -19,7 +19,5 @@ namespace turnero_medico_backend.Models.Entities
         // Texto libre para que el Admin documente condiciones, copagos, restricciones, etc.
         public string Observaciones { get; set; } = string.Empty;
 
-        // Pacientes que utilizan esta obra social
-        public virtual ICollection<Paciente> Pacientes { get; set; } = new List<Paciente>();
     }
 }

@@ -32,18 +32,5 @@ namespace turnero_medico_backend.DTOs.PacienteDTOs
         [DataType(DataType.Date)]
         [MinimumAge(18, ErrorMessage = "El paciente debe ser mayor de 18 años")]
         public DateTime FechaNacimiento { get; set; }
-
-        // ===== Nuevos campos para Familia & ObraSocial =====
-        [Range(0, 1, ErrorMessage = "TipoPago debe ser 0 (ObraSocial) o 1 (Particular)")]
-        public int TipoPago { get; set; } = 0;  // 0=ObraSocial (default), 1=Particular
-
-        public int? ObraSocialId { get; set; }  // Opcional, solo si TipoPago=0
-
-        [StringLength(30, ErrorMessage = "El número de afiliado no puede exceder 30 caracteres")]
-        public string NumeroAfiliado { get; set; } = string.Empty;  // Número de afiliado de la OS
-
-        // Plan dentro de la OS (ej: "Plan 310"). Opcional.
-        [StringLength(50, ErrorMessage = "El plan no puede exceder 50 caracteres")]
-        public string? PlanAfiliado { get; set; }
     }
 }

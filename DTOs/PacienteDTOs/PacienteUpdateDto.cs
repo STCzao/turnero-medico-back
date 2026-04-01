@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using turnero_medico_backend.Models.Entities;
 
 namespace turnero_medico_backend.DTOs.PacienteDTOs
 {
@@ -34,16 +33,5 @@ namespace turnero_medico_backend.DTOs.PacienteDTOs
         [Required(ErrorMessage = "La fecha de nacimiento es obligatoria")]
         [DataType(DataType.Date)]
         public DateTime FechaNacimiento { get; set; }
-
-        // Plan dentro de la OS (ej: "Plan 310"). Opcional.
-        [StringLength(50, ErrorMessage = "El plan no puede exceder 50 caracteres")]
-        public string? PlanAfiliado { get; set; }
-
-        public TipoPago TipoPago { get; set; } = TipoPago.ObraSocial;
-
-        public int? ObraSocialId { get; set; }
-
-        [StringLength(50, ErrorMessage = "El número de afiliado no puede exceder 50 caracteres")]
-        public string NumeroAfiliado { get; set; } = string.Empty;
     }
 }

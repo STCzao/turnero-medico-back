@@ -26,7 +26,7 @@ namespace turnero_medico_backend.Repositories
 
         // Paginación con orden por Id. EF.Property permite ordernar por nombre de columna
         // sin que T necesite implementar ninguna interfaz específica.
-        public async Task<(IEnumerable<T> Items, int Total)> GetAllPagedAsync(int page, int pageSize)
+        public virtual async Task<(IEnumerable<T> Items, int Total)> GetAllPagedAsync(int page, int pageSize)
         {
             var total = await _dbSet.CountAsync();
             var items = await _dbSet

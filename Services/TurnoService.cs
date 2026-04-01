@@ -11,7 +11,7 @@ namespace turnero_medico_backend.Services
 {
     public class TurnoService(
         ITurnoRepository turnoRepository,
-        IRepository<Paciente> pacienteRepository,
+        IPacienteRepository pacienteRepository,
         IRepository<Doctor> doctorRepository,
         IRepository<Especialidad> especialidadRepository,
         ApplicationDbContext dbContext,
@@ -20,7 +20,7 @@ namespace turnero_medico_backend.Services
         IAuditService auditService) : ITurnoService
     {
         private readonly ITurnoRepository _turnoRepository = turnoRepository;
-        private readonly IRepository<Paciente> _pacienteRepository = pacienteRepository;
+        private readonly IPacienteRepository _pacienteRepository = pacienteRepository;
         private readonly IRepository<Doctor> _doctorRepository = doctorRepository;
         private readonly IRepository<Especialidad> _especialidadRepository = especialidadRepository;
         private readonly ApplicationDbContext _dbContext = dbContext;
@@ -276,80 +276,89 @@ namespace turnero_medico_backend.Services
 
         public async Task<TurnoReadDto> ConfirmarAsync(int turnoId, ConfirmarTurnoDto dto)
         {
-            var turno = await _turnoRepository.GetByIdAsync(turnoId)
-                ?? throw new KeyNotFoundException($"Turno con ID {turnoId} no encontrado.");
-
-            var userRole = _currentUserService.GetUserRole();
-            if (userRole != "Secretaria" && userRole != "Admin")
-                throw new UnauthorizedAccessException("Solo la secretaria o el administrador pueden confirmar turnos.");
-
-            if (turno.Estado != EstadoTurno.SolicitudPendiente)
-                throw new InvalidOperationException(
-                    $"Solo se pueden confirmar solicitudes pendientes. Estado actual: '{turno.Estado}'.");
-
-            var doctorId = dto.DoctorId ?? turno.DoctorId
-                ?? throw new InvalidOperationException(
-                    "Debe asignar un doctor al confirmar el turno. El paciente no eligio uno al solicitar.");
-
-            var doctor = await _doctorRepository.GetByIdAsync(doctorId)
-                ?? throw new InvalidOperationException($"El doctor con ID {doctorId} no existe.");
-
-            // Validar que la especialidad del doctor coincida con la del turno
-            if (doctor.EspecialidadId != turno.EspecialidadId)
+            await using var transaction = await _dbContext.Database.BeginTransactionAsync();
+            try
             {
-                var espDoctor = await _especialidadRepository.GetByIdAsync(doctor.EspecialidadId);
-                var espTurno = await _especialidadRepository.GetByIdAsync(turno.EspecialidadId);
-                throw new InvalidOperationException(
-                    $"El doctor '{doctor.Nombre} {doctor.Apellido}' es especialista en '{espDoctor?.Nombre}', "
-                    + $"pero el turno requiere '{espTurno?.Nombre}'.");
+                var turno = await _turnoRepository.GetByIdAsync(turnoId)
+                    ?? throw new KeyNotFoundException($"Turno con ID {turnoId} no encontrado.");
+
+                var userRole = _currentUserService.GetUserRole();
+                if (userRole != "Secretaria" && userRole != "Admin")
+                    throw new UnauthorizedAccessException("Solo la secretaria o el administrador pueden confirmar turnos.");
+
+                if (turno.Estado != EstadoTurno.SolicitudPendiente)
+                    throw new InvalidOperationException(
+                        $"Solo se pueden confirmar solicitudes pendientes. Estado actual: '{turno.Estado}'.");
+
+                var doctorId = dto.DoctorId ?? turno.DoctorId
+                    ?? throw new InvalidOperationException(
+                        "Debe asignar un doctor al confirmar el turno. El paciente no eligio uno al solicitar.");
+
+                var doctor = await _doctorRepository.GetByIdAsync(doctorId)
+                    ?? throw new InvalidOperationException($"El doctor con ID {doctorId} no existe.");
+
+                // Validar que la especialidad del doctor coincida con la del turno
+                if (doctor.EspecialidadId != turno.EspecialidadId)
+                {
+                    var espDoctor = await _especialidadRepository.GetByIdAsync(doctor.EspecialidadId);
+                    var espTurno = await _especialidadRepository.GetByIdAsync(turno.EspecialidadId);
+                    throw new InvalidOperationException(
+                        $"El doctor '{doctor.Nombre} {doctor.Apellido}' es especialista en '{espDoctor?.Nombre}', "
+                        + $"pero el turno requiere '{espTurno?.Nombre}'.");
+                }
+
+                if (dto.FechaHora <= DateTime.UtcNow)
+                    throw new InvalidOperationException("La fecha y hora del turno debe ser en el futuro.");
+
+                // Validar que la FechaHora caiga dentro de un horario de atención configurado del doctor
+                var diaSemanaConfirmar = (int)dto.FechaHora.DayOfWeek;
+                var horaDelTurno = TimeOnly.FromDateTime(dto.FechaHora);
+                var horario = await _dbContext.Horarios.FirstOrDefaultAsync(h =>
+                    h.DoctorId == doctorId &&
+                    h.DiaSemana == diaSemanaConfirmar &&
+                    h.HoraInicio <= horaDelTurno &&
+                    horaDelTurno < h.HoraFin)
+                    ?? throw new InvalidOperationException(
+                        $"El doctor no tiene horario de atención configurado para el {dto.FechaHora:dddd} a las {dto.FechaHora:HH:mm}.");
+
+                // Verificar conflictos usando rango de tiempo (no solo igualdad exacta).
+                // Dos turnos se superponen si sus intervalos [FechaHora, FechaHora+duracion) se tocan.
+                var duracion = horario.DuracionMinutos;
+                var slotFin = dto.FechaHora.AddMinutes(duracion);
+                var slotInicio = dto.FechaHora.AddMinutes(-duracion);
+
+                var hayConflicto = await _dbContext.Turnos.AnyAsync(t =>
+                    t.DoctorId == doctorId &&
+                    t.Estado == EstadoTurno.Confirmado &&
+                    t.Id != turnoId &&
+                    t.FechaHora.HasValue &&
+                    t.FechaHora.Value < slotFin &&
+                    t.FechaHora.Value > slotInicio);
+
+                if (hayConflicto)
+                    throw new InvalidOperationException(
+                        $"El doctor ya tiene un turno confirmado que se superpone con el horario {dto.FechaHora:dd/MM/yyyy HH:mm}.");
+
+                var userId = _currentUserService.GetUserId();
+
+                turno.DoctorId = doctorId;
+                turno.FechaHora = dto.FechaHora;
+                turno.Estado = EstadoTurno.Confirmado;
+                turno.NotasSecretaria = dto.NotasSecretaria;
+                turno.ConfirmadaPorId = userId;
+                turno.FechaGestion = DateTime.UtcNow;
+
+                await _turnoRepository.UpdateAsync(turno);
+                await _auditService.LogAsync(AuditAccion.Confirmar, "Turno", turnoId.ToString());
+                var confirmado = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
+                await transaction.CommitAsync();
+                return _mapper.Map<TurnoReadDto>(confirmado!);
             }
-
-            if (dto.FechaHora <= DateTime.UtcNow)
-                throw new InvalidOperationException("La fecha y hora del turno debe ser en el futuro.");
-
-            // Validar que la FechaHora caiga dentro de un horario de atención configurado del doctor
-            var diaSemanaConfirmar = (int)dto.FechaHora.DayOfWeek;
-            var horaDelTurno = TimeOnly.FromDateTime(dto.FechaHora);
-            var horario = await _dbContext.Horarios.FirstOrDefaultAsync(h =>
-                h.DoctorId == doctorId &&
-                h.DiaSemana == diaSemanaConfirmar &&
-                h.HoraInicio <= horaDelTurno &&
-                horaDelTurno < h.HoraFin);
-            if (horario == null)
-                throw new InvalidOperationException(
-                    $"El doctor no tiene horario de atención configurado para el {dto.FechaHora:dddd} a las {dto.FechaHora:HH:mm}.");
-
-            // Verificar conflictos usando rango de tiempo (no solo igualdad exacta).
-            // Dos turnos se superponen si sus intervalos [FechaHora, FechaHora+duracion) se tocan.
-            var duracion = horario.DuracionMinutos;
-            var slotFin = dto.FechaHora.AddMinutes(duracion);
-            var slotInicio = dto.FechaHora.AddMinutes(-duracion);
-
-            var hayConflicto = await _dbContext.Turnos.AnyAsync(t =>
-                t.DoctorId == doctorId &&
-                t.Estado == EstadoTurno.Confirmado &&
-                t.Id != turnoId &&
-                t.FechaHora.HasValue &&
-                t.FechaHora.Value < slotFin &&
-                t.FechaHora.Value > slotInicio);
-
-            if (hayConflicto)
-                throw new InvalidOperationException(
-                    $"El doctor ya tiene un turno confirmado que se superpone con el horario {dto.FechaHora:dd/MM/yyyy HH:mm}.");
-
-            var userId = _currentUserService.GetUserId();
-
-            turno.DoctorId = doctorId;
-            turno.FechaHora = dto.FechaHora;
-            turno.Estado = EstadoTurno.Confirmado;
-            turno.NotasSecretaria = dto.NotasSecretaria;
-            turno.ConfirmadaPorId = userId;
-            turno.FechaGestion = DateTime.UtcNow;
-
-            await _turnoRepository.UpdateAsync(turno);
-            await _auditService.LogAsync(AuditAccion.Confirmar, "Turno", turnoId.ToString());
-            var confirmado = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
-            return _mapper.Map<TurnoReadDto>(confirmado!);
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
         // ─────────────────────────────────────────────────────────────

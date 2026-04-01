@@ -1,6 +1,7 @@
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using turnero_medico_backend.Data;
 using turnero_medico_backend.DTOs.EspecialidadDTOs;
 using turnero_medico_backend.Models.Entities;
 using turnero_medico_backend.Repositories.Interfaces;
@@ -18,8 +19,10 @@ namespace turnero_medico_backend.Services
         IRepository<Especialidad> repository,
         IMapper mapper,
         IMemoryCache cache,
-        IAuditService auditService) : IEspecialidadService
+        IAuditService auditService,
+        ApplicationDbContext context) : IEspecialidadService
     {
+        private readonly ApplicationDbContext _context = context;
         private readonly IRepository<Especialidad> _repository = repository;
         private readonly IMapper _mapper = mapper;
         private readonly IMemoryCache _cache = cache;
@@ -80,6 +83,19 @@ namespace turnero_medico_backend.Services
         {
             var especialidad = await _repository.GetByIdAsync(id);
             if (especialidad == null) return false;
+
+            var tieneDoctores = await _context.Doctores.AnyAsync(d => d.EspecialidadId == id);
+            if (tieneDoctores)
+                throw new InvalidOperationException(
+                   "No se puede eliminar la especialidad porque tiene doctores asociados."
+                );
+
+            var tieneTurnos = await _context.Turnos.AnyAsync(t => t.EspecialidadId == id);
+            if (tieneTurnos)
+                throw new InvalidOperationException(
+                   "No se puede eliminar la especialidad porque tiene turnos asociados."
+                );
+
             var deleted = await _repository.DeleteAsync(id);
             if (deleted)
             {

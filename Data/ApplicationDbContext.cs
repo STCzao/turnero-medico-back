@@ -23,13 +23,6 @@ namespace turnero_medico_backend.Data
 
             // Configuración de relaciones de dominio
             
-            // Relación: Paciente-ObraSocial (1-a-Muchos)
-            modelBuilder.Entity<Paciente>()
-                .HasOne(p => p.ObraSocial)
-                .WithMany(o => o.Pacientes)
-                .HasForeignKey(p => p.ObraSocialId)
-                .OnDelete(DeleteBehavior.SetNull);  // Si se elimina OS, Paciente queda sin OS
-            
             // Relación: Turno-ObraSocial (Muchos-a-Uno)
             modelBuilder.Entity<Turno>()
                 .HasOne(t => t.ObraSocial)
