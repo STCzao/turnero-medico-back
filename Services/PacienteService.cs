@@ -62,7 +62,8 @@ namespace turnero_medico_backend.Services
                     throw new UnauthorizedAccessException("No tienes permisos para ver este paciente.");
 
                 var tieneTurno = await _dbContext.Turnos
-                    .AnyAsync(t => t.DoctorId == doctorId && t.PacienteId == id);
+                    .AnyAsync(t => t.DoctorId == doctorId && t.PacienteId == id &&
+                        (t.Estado == EstadoTurno.Confirmado || t.Estado == EstadoTurno.Completado));
 
                 if (!tieneTurno)
                     throw new UnauthorizedAccessException("No tienes permisos para ver este paciente.");

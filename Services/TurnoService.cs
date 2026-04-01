@@ -29,6 +29,22 @@ namespace turnero_medico_backend.Services
         private readonly IAuditService _auditService = auditService;
 
         // ─────────────────────────────────────────────────────────────
+        // FILTRADO DE CAMPOS SENSIBLES SEGÚN ROL
+        // ObservacionClinica: solo Doctor, Secretaria, Admin
+        // NotasSecretaria:    solo Secretaria, Admin
+        // ─────────────────────────────────────────────────────────────
+
+        private TurnoReadDto FiltrarCamposSensibles(TurnoReadDto dto)
+        {
+            var rol = _currentUserService.GetUserRole();
+            if (rol != "Doctor" && rol != "Secretaria" && rol != "Admin")
+                dto.ObservacionClinica = null;
+            if (rol != "Secretaria" && rol != "Admin")
+                dto.NotasSecretaria = null;
+            return dto;
+        }
+
+        // ─────────────────────────────────────────────────────────────
         // LECTURA
         // ─────────────────────────────────────────────────────────────
 
@@ -40,7 +56,7 @@ namespace turnero_medico_backend.Services
             var (pagedItems, pagedTotal) = await _turnoRepository.GetAllWithDetailsPagedAsync(page, pageSize, estado);
             return new PagedResultDto<TurnoReadDto>
             {
-                Items = pagedItems.Select(t => _mapper.Map<TurnoReadDto>(t)),
+                Items = pagedItems.Select(t => FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(t))),
                 Total = pagedTotal,
                 Page = page,
                 PageSize = pageSize
@@ -57,7 +73,7 @@ namespace turnero_medico_backend.Services
                 var turnos = await _turnoRepository.FindWithDetailsAsync(t =>
                     t.PacienteId == pacienteId &&
                     (estado == null || t.Estado == estado));
-                return turnos.Select(t => _mapper.Map<TurnoReadDto>(t));
+                return turnos.Select(t => FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(t)));
             }
 
             if (userRole == "Paciente")
@@ -72,7 +88,7 @@ namespace turnero_medico_backend.Services
                 var turnos = await _turnoRepository.FindWithDetailsAsync(t =>
                     t.PacienteId == pacienteId &&
                     (estado == null || t.Estado == estado));
-                return turnos.Select(t => _mapper.Map<TurnoReadDto>(t));
+                return turnos.Select(t => FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(t)));
             }
 
             throw new UnauthorizedAccessException("Los doctores deben consultar turnos por doctor, no por paciente.");
@@ -88,7 +104,7 @@ namespace turnero_medico_backend.Services
                 var turnos = await _turnoRepository.FindWithDetailsAsync(t =>
                     t.DoctorId == doctorId &&
                     (estado == null || t.Estado == estado));
-                return turnos.Select(t => _mapper.Map<TurnoReadDto>(t));
+                return turnos.Select(t => FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(t)));
             }
 
             if (userRole == "Doctor")
@@ -100,7 +116,7 @@ namespace turnero_medico_backend.Services
                 var turnos = await _turnoRepository.FindWithDetailsAsync(t =>
                     t.DoctorId == doctorId &&
                     (estado == null || t.Estado == estado));
-                return turnos.Select(t => _mapper.Map<TurnoReadDto>(t));
+                return turnos.Select(t => FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(t)));
             }
 
             throw new UnauthorizedAccessException("No tienes permisos para consultar turnos de doctores.");
@@ -115,7 +131,7 @@ namespace turnero_medico_backend.Services
             var userId = _currentUserService.GetUserId();
 
             if (userRole == "Admin" || userRole == "Secretaria")
-                return _mapper.Map<TurnoReadDto>(turno);
+                return FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(turno));
 
             if (userRole == "Paciente")
             {
@@ -125,7 +141,7 @@ namespace turnero_medico_backend.Services
                 if (paciente.UserId != userId && paciente.ResponsableId != userId)
                     throw new UnauthorizedAccessException("No tienes permisos para ver este turno.");
 
-                return _mapper.Map<TurnoReadDto>(turno);
+                return FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(turno));
             }
 
             if (userRole == "Doctor")
@@ -137,7 +153,7 @@ namespace turnero_medico_backend.Services
                 if (doctor?.UserId != userId)
                     throw new UnauthorizedAccessException("No tienes permisos para ver este turno.");
 
-                return _mapper.Map<TurnoReadDto>(turno);
+                return FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(turno));
             }
 
             throw new UnauthorizedAccessException("No tienes permisos para ver este turno.");
@@ -213,7 +229,7 @@ namespace turnero_medico_backend.Services
             await _auditService.LogAsync(AuditAccion.Crear, "Turno", created.Id.ToString());
             // Recargar con navegaciones para que PacienteNombre y DoctorNombre estén disponibles.
             var createdConDetalles = await _turnoRepository.GetByIdWithDetailsAsync(created.Id);
-            return _mapper.Map<TurnoReadDto>(createdConDetalles!);
+            return FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(createdConDetalles!));
         }
 
         // ─────────────────────────────────────────────────────────────
@@ -244,7 +260,7 @@ namespace turnero_medico_backend.Services
                 await _turnoRepository.UpdateAsync(turno);
                 await _auditService.LogAsync(AuditAccion.Actualizar, "Turno", id.ToString());
                 var updatedAdmin = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
-                return _mapper.Map<TurnoReadDto>(updatedAdmin!);
+                return FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(updatedAdmin!));
             }
 
             if (userRole != "Doctor")
@@ -270,7 +286,7 @@ namespace turnero_medico_backend.Services
             await _turnoRepository.UpdateAsync(turno);
             await _auditService.LogAsync(AuditAccion.Actualizar, "Turno", id.ToString());
             var updatedDoctor = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
-            return _mapper.Map<TurnoReadDto>(updatedDoctor!);
+            return FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(updatedDoctor!));
         }
         // ─────────────────────────────────────────────────────────────
 
@@ -352,7 +368,7 @@ namespace turnero_medico_backend.Services
                 await _auditService.LogAsync(AuditAccion.Confirmar, "Turno", turnoId.ToString());
                 var confirmado = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
                 await transaction.CommitAsync();
-                return _mapper.Map<TurnoReadDto>(confirmado!);
+                return FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(confirmado!));
             }
             catch
             {
@@ -388,7 +404,7 @@ namespace turnero_medico_backend.Services
             await _turnoRepository.UpdateAsync(turno);
             await _auditService.LogAsync(AuditAccion.Rechazar, "Turno", turnoId.ToString());
             var rechazado = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
-            return _mapper.Map<TurnoReadDto>(rechazado!);
+            return FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(rechazado!));
         }
 
         // ─────────────────────────────────────────────────────────────
@@ -415,7 +431,7 @@ namespace turnero_medico_backend.Services
                 await _turnoRepository.UpdateAsync(turno);
                 await _auditService.LogAsync(AuditAccion.Cancelar, "Turno", turnoId.ToString());
                 var canceladoAdmin = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
-                return _mapper.Map<TurnoReadDto>(canceladoAdmin!);
+                return FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(canceladoAdmin!));
             }
 
             if (userRole == "Doctor")
@@ -435,7 +451,7 @@ namespace turnero_medico_backend.Services
                 await _turnoRepository.UpdateAsync(turno);
                 await _auditService.LogAsync(AuditAccion.Cancelar, "Turno", turnoId.ToString());
                 var canceladoDoctor = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
-                return _mapper.Map<TurnoReadDto>(canceladoDoctor!);
+                return FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(canceladoDoctor!));
             }
 
             if (userRole == "Paciente")
@@ -451,7 +467,7 @@ namespace turnero_medico_backend.Services
                 await _turnoRepository.UpdateAsync(turno);
                 await _auditService.LogAsync(AuditAccion.Cancelar, "Turno", turnoId.ToString());
                 var canceladoPaciente = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
-                return _mapper.Map<TurnoReadDto>(canceladoPaciente!);
+                return FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(canceladoPaciente!));
             }
 
             throw new UnauthorizedAccessException("No tienes permisos para cancelar este turno.");
@@ -496,7 +512,7 @@ namespace turnero_medico_backend.Services
                 var turnos = await _turnoRepository.FindWithDetailsAsync(t =>
                     t.PacienteId == paciente.Id &&
                     (estado == null || t.Estado == estado));
-                return turnos.Select(t => _mapper.Map<TurnoReadDto>(t));
+                return turnos.Select(t => FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(t)));
             }
 
             if (userRole == "Doctor")
@@ -508,7 +524,7 @@ namespace turnero_medico_backend.Services
                 var turnos = await _turnoRepository.FindWithDetailsAsync(t =>
                     t.DoctorId == doctor.Id &&
                     (estado == null || t.Estado == estado));
-                return turnos.Select(t => _mapper.Map<TurnoReadDto>(t));
+                return turnos.Select(t => FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(t)));
             }
 
             throw new UnauthorizedAccessException("Los usuarios Admin/Secretaria deben usar los endpoints de listado general.");
@@ -541,7 +557,7 @@ namespace turnero_medico_backend.Services
                 t.FechaHora < fechaFin);
 
             var ordenados = turnos.OrderBy(t => t.FechaHora);
-            return ordenados.Select(t => _mapper.Map<TurnoReadDto>(t));
+            return ordenados.Select(t => FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(t)));
         }
 
         // ─────────────────────────────────────────────────────────────
@@ -558,7 +574,7 @@ namespace turnero_medico_backend.Services
             var (items, total) = await _turnoRepository.GetAllWithDetailsPagedAsync(page, pageSize, EstadoTurno.SolicitudPendiente);
             return new PagedResultDto<TurnoReadDto>
             {
-                Items = items.Select(t => _mapper.Map<TurnoReadDto>(t)),
+                Items = items.Select(t => FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(t))),
                 Total = total,
                 Page = page,
                 PageSize = pageSize
@@ -592,7 +608,7 @@ namespace turnero_medico_backend.Services
                 t.Estado == EstadoTurno.Completado);
 
             var ordenados = turnos.OrderByDescending(t => t.FechaHora);
-            return ordenados.Select(t => _mapper.Map<TurnoReadDto>(t));
+            return ordenados.Select(t => FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(t)));
         }
     }
 }

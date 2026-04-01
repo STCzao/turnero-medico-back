@@ -99,12 +99,17 @@ namespace turnero_medico_backend.Services
             if (!await _repository.ExistAsync(id))
                 throw new KeyNotFoundException($"Doctor con ID {id} no encontrado.");
 
-            // Restricción de integridad: no se puede borrar un doctor con historial de turnos.
-            // El Admin debe cancelar o reasignar los turnos antes de eliminar.
-            var tieneTurnos = await _dbContext.Turnos.AnyAsync(t => t.DoctorId == id);
-            if (tieneTurnos)
+            // Restricción de integridad: no se puede borrar un doctor con turnos confirmados futuros.
+            // El Admin debe cancelar o reasignar esos turnos antes de eliminar.
+            // Turnos pasados (historial) no impiden la eliminación.
+            var tieneTurnosFuturos = await _dbContext.Turnos.AnyAsync(t =>
+                t.DoctorId == id &&
+                t.Estado == EstadoTurno.Confirmado &&
+                t.FechaHora.HasValue &&
+                t.FechaHora > DateTime.UtcNow);
+            if (tieneTurnosFuturos)
                 throw new InvalidOperationException(
-                    "No se puede eliminar el doctor porque tiene turnos asociados. Cancele o reasigne los turnos primero.");
+                    "No se puede eliminar el doctor porque tiene turnos confirmados futuros. Cancele o reasigne esos turnos primero.");
 
             var deleted = await _repository.DeleteAsync(id);
             if (deleted)

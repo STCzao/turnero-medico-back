@@ -205,6 +205,12 @@ builder.Services.AddCors(options =>
                 .AllowCredentials();
         });
     }
+    else if (!builder.Environment.IsDevelopment())
+    {
+        // Si no hay URL de frontend configurada en producción, la app no debe arrancar con CORS abierto.
+        throw new InvalidOperationException(
+            "Falta 'Cors:AllowedOrigin' en la configuración de producción. Configure la variable de entorno correspondiente.");
+    }
 });
 
 // Rate limiting: protege endpoints publicos contra abuso

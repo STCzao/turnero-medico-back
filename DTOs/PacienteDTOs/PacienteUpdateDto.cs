@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using turnero_medico_backend.DTOs.Validations;
 
 namespace turnero_medico_backend.DTOs.PacienteDTOs
 {
@@ -32,6 +33,7 @@ namespace turnero_medico_backend.DTOs.PacienteDTOs
 
         [Required(ErrorMessage = "La fecha de nacimiento es obligatoria")]
         [DataType(DataType.Date)]
+        [MinimumAge(18, ErrorMessage = "El paciente debe ser mayor de 18 años")]
         public DateTime FechaNacimiento { get; set; }
     }
 }
