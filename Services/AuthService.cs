@@ -293,7 +293,6 @@ namespace turnero_medico_backend.Services
                     _dbContext.Secretarias.Update(secretariaExistente);
                     await _dbContext.SaveChangesAsync();
 
-                    newUser.SecretariaId = secretariaExistente.Id;
                 }
                 else
                 {
@@ -311,10 +310,9 @@ namespace turnero_medico_backend.Services
                     _dbContext.Secretarias.Add(secretaria);
                     await _dbContext.SaveChangesAsync();
 
-                    newUser.SecretariaId = secretaria.Id;
                 }
 
-                // 4. Actualizar SecretariaId en el usuario
+                // 4. Guardar cambios del usuario (rol asignado)
                 await _userManager.UpdateAsync(newUser);
 
                 await transaction.CommitAsync();

@@ -35,12 +35,6 @@ namespace turnero_medico_backend.Migrations
                         onDelete: ReferentialAction.SetNull);
                 });
 
-            migrationBuilder.AddColumn<int>(
-                name: "SecretariaId",
-                table: "AspNetUsers",
-                type: "integer",
-                nullable: true);
-
             migrationBuilder.CreateIndex(
                 name: "IX_Secretarias_Dni",
                 table: "Secretarias",
@@ -58,10 +52,6 @@ namespace turnero_medico_backend.Migrations
         {
             migrationBuilder.DropTable(
                 name: "Secretarias");
-
-            migrationBuilder.DropColumn(
-                name: "SecretariaId",
-                table: "AspNetUsers");
         }
     }
 }
