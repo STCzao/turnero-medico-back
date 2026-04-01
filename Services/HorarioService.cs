@@ -127,8 +127,8 @@ namespace turnero_medico_backend.Services
             if (!horarios.Any())
                 return [];
 
-            // Usar fecha local para evitar desfases de zona horaria
-            var fechaBase = fecha.Date;
+            // Usar fecha UTC para que la comparación contra timestamp with time zone sea correcta
+            var fechaBase = DateTime.SpecifyKind(fecha.Date, DateTimeKind.Utc);
             var fechaFin = fechaBase.AddDays(1);
             var turnosOcupados = (await _dbContext.Turnos
                 .Where(t =>
@@ -150,7 +150,7 @@ namespace turnero_medico_backend.Services
                 var slot = horario.HoraInicio;
                 while (slot.AddMinutes(horario.DuracionMinutos) <= horario.HoraFin)
                 {
-                    var fechaHoraSlot = fechaBase.Add(slot.ToTimeSpan());
+                    var fechaHoraSlot = DateTime.SpecifyKind(fechaBase.Add(slot.ToTimeSpan()), DateTimeKind.Utc);
 
                     // Muestra todos los slots no ocupados del día.
                     // El filtro de "no pasado" se delega al frontend (min=today en el datepicker)

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -232,27 +233,42 @@ namespace turnero_medico_backend.Services
         // ─────────────────────────────────────────────────────────────
         // REGISTRO SECRETARIA (solo Admin)
         // ─────────────────────────────────────────────────────────────
+        // ─────────────────────────────────────────────────────────────
+        // REGISTRO SECRETARIA (solo Admin)
+        // Vinculación por DNI: si ya existe un registro de Secretaria con ese DNI
+        // (creado previamente vía CRUD), se vincula a la cuenta nueva.
+        // ─────────────────────────────────────────────────────────────
         public async Task<(bool Success, string Message)> RegisterSecretariaAsync(
             string email,
             string password,
             string nombre,
             string apellido,
-            string? dni = null)
+            string dni)
         {
             var userExists = await _userManager.FindByEmailAsync(email);
             if (userExists != null)
                 return (false, "El email ya está registrado como usuario");
 
+            // Buscar si ya existe una Secretaria con este DNI (creada vía CRUD sin cuenta)
+            var secretariasConDni = await _dbContext.Secretarias
+                .Where(s => s.Dni == dni.Trim())
+                .ToListAsync();
+            var secretariaExistente = secretariasConDni.FirstOrDefault();
+
+            if (secretariaExistente != null && !string.IsNullOrEmpty(secretariaExistente.UserId))
+                return (false, "El DNI ya está vinculado a una cuenta de usuario");
+
             await using var transaction = await _dbContext.Database.BeginTransactionAsync();
             try
             {
+                // 1. Crear el usuario en AspNetUsers
                 var newUser = new ApplicationUser
                 {
                     Email = email,
                     UserName = email,
                     Nombre = nombre,
                     Apellido = apellido,
-                    Dni = dni?.Trim() ?? string.Empty,
+                    Dni = dni.Trim(),
                     FechaRegistro = DateTime.UtcNow
                 };
 
@@ -264,8 +280,42 @@ namespace turnero_medico_backend.Services
                     return (false, $"Error al crear el usuario: {errors}");
                 }
 
+                // 2. Asignar rol Secretaria
                 await EnsureRoleExistsAsync("Secretaria");
                 await _userManager.AddToRoleAsync(newUser, "Secretaria");
+
+                // 3. Vincular o crear Secretaria
+                if (secretariaExistente != null)
+                {
+                    // Secretaria ya existía (creada vía CRUD sin cuenta) → vincular por DNI
+                    secretariaExistente.UserId = newUser.Id;
+                    secretariaExistente.Email = email;
+                    _dbContext.Secretarias.Update(secretariaExistente);
+                    await _dbContext.SaveChangesAsync();
+
+                    newUser.SecretariaId = secretariaExistente.Id;
+                }
+                else
+                {
+                    // Secretaria nueva → crear registro
+                    var secretaria = new Models.Entities.Secretaria
+                    {
+                        Nombre = nombre,
+                        Apellido = apellido,
+                        Dni = dni.Trim(),
+                        Email = email,
+                        Telefono = string.Empty,
+                        UserId = newUser.Id
+                    };
+
+                    _dbContext.Secretarias.Add(secretaria);
+                    await _dbContext.SaveChangesAsync();
+
+                    newUser.SecretariaId = secretaria.Id;
+                }
+
+                // 4. Actualizar SecretariaId en el usuario
+                await _userManager.UpdateAsync(newUser);
 
                 await transaction.CommitAsync();
                 await _auditService.LogAsync(AuditAccion.Registro, "ApplicationUser", newUser.Id);

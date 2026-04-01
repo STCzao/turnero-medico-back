@@ -161,6 +161,7 @@ builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<ITurnoRepository, TurnoRepository>();
 builder.Services.AddScoped<IPacienteRepository, PacienteRepository>();
 builder.Services.AddScoped<IDoctorRepository, DoctorRepository>();
+builder.Services.AddScoped<ISecretariaRepository, SecretariaRepository>();
 
 // Registrar Servicios
 builder.Services.AddScoped<IPacienteService, PacienteService>();

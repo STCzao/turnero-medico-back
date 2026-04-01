@@ -15,6 +15,7 @@ namespace turnero_medico_backend.Data
         public DbSet<ObraSocial> ObrasSociales { get; set; }
         public DbSet<Horario> Horarios { get; set; }
         public DbSet<Especialidad> Especialidades { get; set; }
+        public DbSet<Secretaria> Secretarias { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -137,6 +138,19 @@ namespace turnero_medico_backend.Data
 
             modelBuilder.Entity<Paciente>()
                 .HasIndex(p => p.ResponsableId);
+
+            // Secretaria → AspNetUsers (opcional hasta que se registre cuenta)
+            modelBuilder.Entity<Secretaria>()
+                .HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(s => s.UserId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .IsRequired(false);
+
+            // Secretaria: DNI único
+            modelBuilder.Entity<Secretaria>()
+                .HasIndex(s => s.Dni)
+                .IsUnique();
 
             // AuditLog: índices para consultas por usuario y por fecha
             modelBuilder.Entity<AuditLog>()

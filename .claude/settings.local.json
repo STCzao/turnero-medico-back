@@ -20,7 +20,9 @@
       "Bash(cd /d/Programacion/Practica/\"Full Stack\")",
       "Bash(dotnet ef:*)",
       "Bash(dotnet tool:*)",
-      "Bash(where dotnet-ef:*)"
+      "Bash(where dotnet-ef:*)",
+      "Bash(\"D:\\\\Aplicaciones\\\\Drivers\\\\dotnet\\\\dotnet.exe\" ef:*)",
+      "Bash(\"D:\\\\Aplicaciones\\\\Drivers\\\\dotnet\\\\dotnet.exe\" tool:*)"
     ]
   }
 }

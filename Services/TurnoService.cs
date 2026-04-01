@@ -198,6 +198,7 @@ namespace turnero_medico_backend.Services
             if (dto.ObraSocialId.HasValue)
             {
                 var obraSocial = await _dbContext.ObrasSociales
+                .Include(o => o.Especialidades)
                 .Where(o => o.Id == dto.ObraSocialId.Value)
                 .FirstOrDefaultAsync()
                 ?? throw new InvalidOperationException($"La obra social con Id {dto.ObraSocialId} no existe.");
@@ -358,7 +359,7 @@ namespace turnero_medico_backend.Services
                 var userId = _currentUserService.GetUserId();
 
                 turno.DoctorId = doctorId;
-                turno.FechaHora = dto.FechaHora;
+                turno.FechaHora = DateTime.SpecifyKind(dto.FechaHora, DateTimeKind.Utc);
                 turno.Estado = EstadoTurno.Confirmado;
                 turno.NotasSecretaria = dto.NotasSecretaria;
                 turno.ConfirmadaPorId = userId;
