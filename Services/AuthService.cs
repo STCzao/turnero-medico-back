@@ -108,7 +108,7 @@ namespace turnero_medico_backend.Services
                         Apellido = apellido,
                         Email = email,
                         Telefono = telefono,
-                        FechaNacimiento = fechaNacimiento,
+                        FechaNacimiento = DateTime.SpecifyKind(fechaNacimiento, DateTimeKind.Utc),
                         EsMayorDeEdad = esMayorDeEdad,
                         UserId = newUser.Id
                     };

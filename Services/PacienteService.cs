@@ -117,6 +117,7 @@ namespace turnero_medico_backend.Services
                 throw new UnauthorizedAccessException("No tienes permisos para modificar este paciente.");
 
             _mapper.Map(dto, paciente);
+            paciente.FechaNacimiento = DateTime.SpecifyKind(paciente.FechaNacimiento, DateTimeKind.Utc);
 
             // Recalcular EsMayorDeEdad en base a FechaNacimiento actualizada
             var hoy = DateTime.UtcNow;
@@ -196,7 +197,7 @@ namespace turnero_medico_backend.Services
                 Dni = dto.Dni,
                 Nombre = dto.Nombre,
                 Apellido = dto.Apellido,
-                FechaNacimiento = dto.FechaNacimiento,
+                FechaNacimiento = DateTime.SpecifyKind(dto.FechaNacimiento, DateTimeKind.Utc),
                 Telefono = dto.Telefono ?? string.Empty,
                 ResponsableId = userId,
                 EsMayorDeEdad = false,
@@ -222,7 +223,7 @@ namespace turnero_medico_backend.Services
 
             dependiente.Nombre = dto.Nombre;
             dependiente.Apellido = dto.Apellido;
-            dependiente.FechaNacimiento = dto.FechaNacimiento;
+            dependiente.FechaNacimiento = DateTime.SpecifyKind(dto.FechaNacimiento, DateTimeKind.Utc);
             dependiente.Telefono = dto.Telefono ?? string.Empty;
 
             // Recalcular mayoría de edad por si cambió la fecha
