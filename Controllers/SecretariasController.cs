@@ -10,6 +10,7 @@ namespace turnero_medico_backend.Controllers;
 // CRUD de secretarias — exclusivo para Admin.
 // Sigue el mismo patrón que DoctoresController:
 // el Admin crea el registro (POST) y luego registra la cuenta vía /api/auth/register-secretaria.
+// GET /me es accesible por la propia secretaria autenticada.
 [ApiVersion("1.0")]
 [ApiController]
 [Route("api/[controller]")]
@@ -23,6 +24,17 @@ public class SecretariasController(ISecretariaService _service) : ControllerBase
     {
         var result = await _service.GetAllPagedAsync(page, pageSize);
         return Ok(result);
+    }
+
+    [HttpGet("me")]
+    [Authorize(Roles = "Secretaria")]
+    public async Task<ActionResult<SecretariaReadDto>> GetMyProfile()
+    {
+        var secretaria = await _service.GetMyProfileAsync();
+        if (secretaria == null)
+            return NotFound(new { mensaje = "No se encontró un registro de secretaria asociado a tu usuario. Contacta con el administrador." });
+
+        return Ok(secretaria);
     }
 
     [HttpGet("{id}")]
