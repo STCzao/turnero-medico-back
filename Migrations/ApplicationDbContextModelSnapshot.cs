@@ -227,9 +227,6 @@ namespace turnero_medico_backend.Migrations
                     b.Property<int?>("PacienteId")
                         .HasColumnType("integer");
 
-                    b.Property<int?>("SecretariaId")
-                        .HasColumnType("integer");
-
                     b.Property<string>("PasswordHash")
                         .HasColumnType("text");
 

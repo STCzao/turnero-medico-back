@@ -21,8 +21,6 @@ namespace turnero_medico_backend.Models.Entities
         // Relación con Paciente (si es paciente)
         public int? PacienteId { get; set; }
 
-        // Relación con Secretaria (si es secretaria)
-        public int? SecretariaId { get; set; }
 
         // Fecha de creación de la cuenta
         public DateTime FechaRegistro { get; set; } = DateTime.UtcNow;
