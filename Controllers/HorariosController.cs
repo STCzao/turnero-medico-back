@@ -14,6 +14,7 @@ namespace turnero_medico_backend.Controllers
     {
         // Consultar horarios de un doctor — accesible por todos los roles autenticados
         [HttpGet("doctor/{doctorId}")]
+        [Authorize(Roles = "Admin,Secretaria,Doctor")]
         public async Task<ActionResult<IEnumerable<HorarioReadDto>>> GetByDoctor(int doctorId)
         {
             var horarios = await _service.GetByDoctorAsync(doctorId);
@@ -22,7 +23,7 @@ namespace turnero_medico_backend.Controllers
 
         // Configurar horario — solo Admin
         [HttpPost]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin,Secretaria")]
         public async Task<ActionResult<HorarioReadDto>> Create(HorarioCreateDto dto)
         {
             if (!ModelState.IsValid)
@@ -34,7 +35,7 @@ namespace turnero_medico_backend.Controllers
 
         // Eliminar horario — solo Admin
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin,Secretaria")]
         public async Task<ActionResult> Delete(int id)
         {
             await _service.DeleteAsync(id);
@@ -43,7 +44,7 @@ namespace turnero_medico_backend.Controllers
 
         // Slots disponibles para un doctor en una fecha. Usado por secretaria al confirmar.
         [HttpGet("doctor/{doctorId}/disponibilidad")]
-        [Authorize(Roles = "Admin,Secretaria,Paciente")]
+        [Authorize(Roles = "Admin,Secretaria")]
         public async Task<ActionResult<IEnumerable<SlotDisponibleDto>>> GetDisponibilidad(
             int doctorId,
             [FromQuery] DateTime fecha)

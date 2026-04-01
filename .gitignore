@@ -70,6 +70,7 @@ ScaffoldingReadMe.txt
 *.pidb
 *.svclog
 *.scc
+.claude
 
 # Test Results
 [Tt]est[Rr]esult*/

@@ -11,7 +11,7 @@ namespace turnero_medico_backend.Services
 {
     public class TurnoService(
         ITurnoRepository turnoRepository,
-        IRepository<Paciente> pacienteRepository,
+        IPacienteRepository pacienteRepository,
         IRepository<Doctor> doctorRepository,
         IRepository<Especialidad> especialidadRepository,
         ApplicationDbContext dbContext,
@@ -20,13 +20,29 @@ namespace turnero_medico_backend.Services
         IAuditService auditService) : ITurnoService
     {
         private readonly ITurnoRepository _turnoRepository = turnoRepository;
-        private readonly IRepository<Paciente> _pacienteRepository = pacienteRepository;
+        private readonly IPacienteRepository _pacienteRepository = pacienteRepository;
         private readonly IRepository<Doctor> _doctorRepository = doctorRepository;
         private readonly IRepository<Especialidad> _especialidadRepository = especialidadRepository;
         private readonly ApplicationDbContext _dbContext = dbContext;
         private readonly IMapper _mapper = mapper;
         private readonly ICurrentUserService _currentUserService = currentUserService;
         private readonly IAuditService _auditService = auditService;
+
+        // ─────────────────────────────────────────────────────────────
+        // FILTRADO DE CAMPOS SENSIBLES SEGÚN ROL
+        // ObservacionClinica: solo Doctor, Secretaria, Admin
+        // NotasSecretaria:    solo Secretaria, Admin
+        // ─────────────────────────────────────────────────────────────
+
+        private TurnoReadDto FiltrarCamposSensibles(TurnoReadDto dto)
+        {
+            var rol = _currentUserService.GetUserRole();
+            if (rol != "Doctor" && rol != "Secretaria" && rol != "Admin")
+                dto.ObservacionClinica = null;
+            if (rol != "Secretaria" && rol != "Admin")
+                dto.NotasSecretaria = null;
+            return dto;
+        }
 
         // ─────────────────────────────────────────────────────────────
         // LECTURA
@@ -40,7 +56,7 @@ namespace turnero_medico_backend.Services
             var (pagedItems, pagedTotal) = await _turnoRepository.GetAllWithDetailsPagedAsync(page, pageSize, estado);
             return new PagedResultDto<TurnoReadDto>
             {
-                Items = pagedItems.Select(t => _mapper.Map<TurnoReadDto>(t)),
+                Items = pagedItems.Select(t => FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(t))),
                 Total = pagedTotal,
                 Page = page,
                 PageSize = pageSize
@@ -57,7 +73,7 @@ namespace turnero_medico_backend.Services
                 var turnos = await _turnoRepository.FindWithDetailsAsync(t =>
                     t.PacienteId == pacienteId &&
                     (estado == null || t.Estado == estado));
-                return turnos.Select(t => _mapper.Map<TurnoReadDto>(t));
+                return turnos.Select(t => FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(t)));
             }
 
             if (userRole == "Paciente")
@@ -72,7 +88,7 @@ namespace turnero_medico_backend.Services
                 var turnos = await _turnoRepository.FindWithDetailsAsync(t =>
                     t.PacienteId == pacienteId &&
                     (estado == null || t.Estado == estado));
-                return turnos.Select(t => _mapper.Map<TurnoReadDto>(t));
+                return turnos.Select(t => FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(t)));
             }
 
             throw new UnauthorizedAccessException("Los doctores deben consultar turnos por doctor, no por paciente.");
@@ -88,7 +104,7 @@ namespace turnero_medico_backend.Services
                 var turnos = await _turnoRepository.FindWithDetailsAsync(t =>
                     t.DoctorId == doctorId &&
                     (estado == null || t.Estado == estado));
-                return turnos.Select(t => _mapper.Map<TurnoReadDto>(t));
+                return turnos.Select(t => FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(t)));
             }
 
             if (userRole == "Doctor")
@@ -100,7 +116,7 @@ namespace turnero_medico_backend.Services
                 var turnos = await _turnoRepository.FindWithDetailsAsync(t =>
                     t.DoctorId == doctorId &&
                     (estado == null || t.Estado == estado));
-                return turnos.Select(t => _mapper.Map<TurnoReadDto>(t));
+                return turnos.Select(t => FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(t)));
             }
 
             throw new UnauthorizedAccessException("No tienes permisos para consultar turnos de doctores.");
@@ -115,7 +131,7 @@ namespace turnero_medico_backend.Services
             var userId = _currentUserService.GetUserId();
 
             if (userRole == "Admin" || userRole == "Secretaria")
-                return _mapper.Map<TurnoReadDto>(turno);
+                return FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(turno));
 
             if (userRole == "Paciente")
             {
@@ -125,7 +141,7 @@ namespace turnero_medico_backend.Services
                 if (paciente.UserId != userId && paciente.ResponsableId != userId)
                     throw new UnauthorizedAccessException("No tienes permisos para ver este turno.");
 
-                return _mapper.Map<TurnoReadDto>(turno);
+                return FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(turno));
             }
 
             if (userRole == "Doctor")
@@ -137,7 +153,7 @@ namespace turnero_medico_backend.Services
                 if (doctor?.UserId != userId)
                     throw new UnauthorizedAccessException("No tienes permisos para ver este turno.");
 
-                return _mapper.Map<TurnoReadDto>(turno);
+                return FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(turno));
             }
 
             throw new UnauthorizedAccessException("No tienes permisos para ver este turno.");
@@ -213,7 +229,7 @@ namespace turnero_medico_backend.Services
             await _auditService.LogAsync(AuditAccion.Crear, "Turno", created.Id.ToString());
             // Recargar con navegaciones para que PacienteNombre y DoctorNombre estén disponibles.
             var createdConDetalles = await _turnoRepository.GetByIdWithDetailsAsync(created.Id);
-            return _mapper.Map<TurnoReadDto>(createdConDetalles!);
+            return FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(createdConDetalles!));
         }
 
         // ─────────────────────────────────────────────────────────────
@@ -244,7 +260,7 @@ namespace turnero_medico_backend.Services
                 await _turnoRepository.UpdateAsync(turno);
                 await _auditService.LogAsync(AuditAccion.Actualizar, "Turno", id.ToString());
                 var updatedAdmin = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
-                return _mapper.Map<TurnoReadDto>(updatedAdmin!);
+                return FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(updatedAdmin!));
             }
 
             if (userRole != "Doctor")
@@ -270,86 +286,95 @@ namespace turnero_medico_backend.Services
             await _turnoRepository.UpdateAsync(turno);
             await _auditService.LogAsync(AuditAccion.Actualizar, "Turno", id.ToString());
             var updatedDoctor = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
-            return _mapper.Map<TurnoReadDto>(updatedDoctor!);
+            return FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(updatedDoctor!));
         }
         // ─────────────────────────────────────────────────────────────
 
         public async Task<TurnoReadDto> ConfirmarAsync(int turnoId, ConfirmarTurnoDto dto)
         {
-            var turno = await _turnoRepository.GetByIdAsync(turnoId)
-                ?? throw new KeyNotFoundException($"Turno con ID {turnoId} no encontrado.");
-
-            var userRole = _currentUserService.GetUserRole();
-            if (userRole != "Secretaria" && userRole != "Admin")
-                throw new UnauthorizedAccessException("Solo la secretaria o el administrador pueden confirmar turnos.");
-
-            if (turno.Estado != EstadoTurno.SolicitudPendiente)
-                throw new InvalidOperationException(
-                    $"Solo se pueden confirmar solicitudes pendientes. Estado actual: '{turno.Estado}'.");
-
-            var doctorId = dto.DoctorId ?? turno.DoctorId
-                ?? throw new InvalidOperationException(
-                    "Debe asignar un doctor al confirmar el turno. El paciente no eligio uno al solicitar.");
-
-            var doctor = await _doctorRepository.GetByIdAsync(doctorId)
-                ?? throw new InvalidOperationException($"El doctor con ID {doctorId} no existe.");
-
-            // Validar que la especialidad del doctor coincida con la del turno
-            if (doctor.EspecialidadId != turno.EspecialidadId)
+            await using var transaction = await _dbContext.Database.BeginTransactionAsync();
+            try
             {
-                var espDoctor = await _especialidadRepository.GetByIdAsync(doctor.EspecialidadId);
-                var espTurno = await _especialidadRepository.GetByIdAsync(turno.EspecialidadId);
-                throw new InvalidOperationException(
-                    $"El doctor '{doctor.Nombre} {doctor.Apellido}' es especialista en '{espDoctor?.Nombre}', "
-                    + $"pero el turno requiere '{espTurno?.Nombre}'.");
+                var turno = await _turnoRepository.GetByIdAsync(turnoId)
+                    ?? throw new KeyNotFoundException($"Turno con ID {turnoId} no encontrado.");
+
+                var userRole = _currentUserService.GetUserRole();
+                if (userRole != "Secretaria" && userRole != "Admin")
+                    throw new UnauthorizedAccessException("Solo la secretaria o el administrador pueden confirmar turnos.");
+
+                if (turno.Estado != EstadoTurno.SolicitudPendiente)
+                    throw new InvalidOperationException(
+                        $"Solo se pueden confirmar solicitudes pendientes. Estado actual: '{turno.Estado}'.");
+
+                var doctorId = dto.DoctorId ?? turno.DoctorId
+                    ?? throw new InvalidOperationException(
+                        "Debe asignar un doctor al confirmar el turno. El paciente no eligio uno al solicitar.");
+
+                var doctor = await _doctorRepository.GetByIdAsync(doctorId)
+                    ?? throw new InvalidOperationException($"El doctor con ID {doctorId} no existe.");
+
+                // Validar que la especialidad del doctor coincida con la del turno
+                if (doctor.EspecialidadId != turno.EspecialidadId)
+                {
+                    var espDoctor = await _especialidadRepository.GetByIdAsync(doctor.EspecialidadId);
+                    var espTurno = await _especialidadRepository.GetByIdAsync(turno.EspecialidadId);
+                    throw new InvalidOperationException(
+                        $"El doctor '{doctor.Nombre} {doctor.Apellido}' es especialista en '{espDoctor?.Nombre}', "
+                        + $"pero el turno requiere '{espTurno?.Nombre}'.");
+                }
+
+                if (dto.FechaHora <= DateTime.UtcNow)
+                    throw new InvalidOperationException("La fecha y hora del turno debe ser en el futuro.");
+
+                // Validar que la FechaHora caiga dentro de un horario de atención configurado del doctor
+                var diaSemanaConfirmar = (int)dto.FechaHora.DayOfWeek;
+                var horaDelTurno = TimeOnly.FromDateTime(dto.FechaHora);
+                var horario = await _dbContext.Horarios.FirstOrDefaultAsync(h =>
+                    h.DoctorId == doctorId &&
+                    h.DiaSemana == diaSemanaConfirmar &&
+                    h.HoraInicio <= horaDelTurno &&
+                    horaDelTurno < h.HoraFin)
+                    ?? throw new InvalidOperationException(
+                        $"El doctor no tiene horario de atención configurado para el {dto.FechaHora:dddd} a las {dto.FechaHora:HH:mm}.");
+
+                // Verificar conflictos usando rango de tiempo (no solo igualdad exacta).
+                // Dos turnos se superponen si sus intervalos [FechaHora, FechaHora+duracion) se tocan.
+                var duracion = horario.DuracionMinutos;
+                var slotFin = dto.FechaHora.AddMinutes(duracion);
+                var slotInicio = dto.FechaHora.AddMinutes(-duracion);
+
+                var hayConflicto = await _dbContext.Turnos.AnyAsync(t =>
+                    t.DoctorId == doctorId &&
+                    t.Estado == EstadoTurno.Confirmado &&
+                    t.Id != turnoId &&
+                    t.FechaHora.HasValue &&
+                    t.FechaHora.Value < slotFin &&
+                    t.FechaHora.Value > slotInicio);
+
+                if (hayConflicto)
+                    throw new InvalidOperationException(
+                        $"El doctor ya tiene un turno confirmado que se superpone con el horario {dto.FechaHora:dd/MM/yyyy HH:mm}.");
+
+                var userId = _currentUserService.GetUserId();
+
+                turno.DoctorId = doctorId;
+                turno.FechaHora = dto.FechaHora;
+                turno.Estado = EstadoTurno.Confirmado;
+                turno.NotasSecretaria = dto.NotasSecretaria;
+                turno.ConfirmadaPorId = userId;
+                turno.FechaGestion = DateTime.UtcNow;
+
+                await _turnoRepository.UpdateAsync(turno);
+                await _auditService.LogAsync(AuditAccion.Confirmar, "Turno", turnoId.ToString());
+                var confirmado = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
+                await transaction.CommitAsync();
+                return FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(confirmado!));
             }
-
-            if (dto.FechaHora <= DateTime.UtcNow)
-                throw new InvalidOperationException("La fecha y hora del turno debe ser en el futuro.");
-
-            // Validar que la FechaHora caiga dentro de un horario de atención configurado del doctor
-            var diaSemanaConfirmar = (int)dto.FechaHora.DayOfWeek;
-            var horaDelTurno = TimeOnly.FromDateTime(dto.FechaHora);
-            var horario = await _dbContext.Horarios.FirstOrDefaultAsync(h =>
-                h.DoctorId == doctorId &&
-                h.DiaSemana == diaSemanaConfirmar &&
-                h.HoraInicio <= horaDelTurno &&
-                horaDelTurno < h.HoraFin);
-            if (horario == null)
-                throw new InvalidOperationException(
-                    $"El doctor no tiene horario de atención configurado para el {dto.FechaHora:dddd} a las {dto.FechaHora:HH:mm}.");
-
-            // Verificar conflictos usando rango de tiempo (no solo igualdad exacta).
-            // Dos turnos se superponen si sus intervalos [FechaHora, FechaHora+duracion) se tocan.
-            var duracion = horario.DuracionMinutos;
-            var slotFin = dto.FechaHora.AddMinutes(duracion);
-            var slotInicio = dto.FechaHora.AddMinutes(-duracion);
-
-            var hayConflicto = await _dbContext.Turnos.AnyAsync(t =>
-                t.DoctorId == doctorId &&
-                t.Estado == EstadoTurno.Confirmado &&
-                t.Id != turnoId &&
-                t.FechaHora.HasValue &&
-                t.FechaHora.Value < slotFin &&
-                t.FechaHora.Value > slotInicio);
-
-            if (hayConflicto)
-                throw new InvalidOperationException(
-                    $"El doctor ya tiene un turno confirmado que se superpone con el horario {dto.FechaHora:dd/MM/yyyy HH:mm}.");
-
-            var userId = _currentUserService.GetUserId();
-
-            turno.DoctorId = doctorId;
-            turno.FechaHora = dto.FechaHora;
-            turno.Estado = EstadoTurno.Confirmado;
-            turno.NotasSecretaria = dto.NotasSecretaria;
-            turno.ConfirmadaPorId = userId;
-            turno.FechaGestion = DateTime.UtcNow;
-
-            await _turnoRepository.UpdateAsync(turno);
-            await _auditService.LogAsync(AuditAccion.Confirmar, "Turno", turnoId.ToString());
-            var confirmado = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
-            return _mapper.Map<TurnoReadDto>(confirmado!);
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
         // ─────────────────────────────────────────────────────────────
@@ -379,7 +404,7 @@ namespace turnero_medico_backend.Services
             await _turnoRepository.UpdateAsync(turno);
             await _auditService.LogAsync(AuditAccion.Rechazar, "Turno", turnoId.ToString());
             var rechazado = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
-            return _mapper.Map<TurnoReadDto>(rechazado!);
+            return FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(rechazado!));
         }
 
         // ─────────────────────────────────────────────────────────────
@@ -406,7 +431,7 @@ namespace turnero_medico_backend.Services
                 await _turnoRepository.UpdateAsync(turno);
                 await _auditService.LogAsync(AuditAccion.Cancelar, "Turno", turnoId.ToString());
                 var canceladoAdmin = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
-                return _mapper.Map<TurnoReadDto>(canceladoAdmin!);
+                return FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(canceladoAdmin!));
             }
 
             if (userRole == "Doctor")
@@ -426,7 +451,7 @@ namespace turnero_medico_backend.Services
                 await _turnoRepository.UpdateAsync(turno);
                 await _auditService.LogAsync(AuditAccion.Cancelar, "Turno", turnoId.ToString());
                 var canceladoDoctor = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
-                return _mapper.Map<TurnoReadDto>(canceladoDoctor!);
+                return FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(canceladoDoctor!));
             }
 
             if (userRole == "Paciente")
@@ -442,7 +467,7 @@ namespace turnero_medico_backend.Services
                 await _turnoRepository.UpdateAsync(turno);
                 await _auditService.LogAsync(AuditAccion.Cancelar, "Turno", turnoId.ToString());
                 var canceladoPaciente = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
-                return _mapper.Map<TurnoReadDto>(canceladoPaciente!);
+                return FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(canceladoPaciente!));
             }
 
             throw new UnauthorizedAccessException("No tienes permisos para cancelar este turno.");
@@ -487,7 +512,7 @@ namespace turnero_medico_backend.Services
                 var turnos = await _turnoRepository.FindWithDetailsAsync(t =>
                     t.PacienteId == paciente.Id &&
                     (estado == null || t.Estado == estado));
-                return turnos.Select(t => _mapper.Map<TurnoReadDto>(t));
+                return turnos.Select(t => FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(t)));
             }
 
             if (userRole == "Doctor")
@@ -499,7 +524,7 @@ namespace turnero_medico_backend.Services
                 var turnos = await _turnoRepository.FindWithDetailsAsync(t =>
                     t.DoctorId == doctor.Id &&
                     (estado == null || t.Estado == estado));
-                return turnos.Select(t => _mapper.Map<TurnoReadDto>(t));
+                return turnos.Select(t => FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(t)));
             }
 
             throw new UnauthorizedAccessException("Los usuarios Admin/Secretaria deben usar los endpoints de listado general.");
@@ -532,7 +557,7 @@ namespace turnero_medico_backend.Services
                 t.FechaHora < fechaFin);
 
             var ordenados = turnos.OrderBy(t => t.FechaHora);
-            return ordenados.Select(t => _mapper.Map<TurnoReadDto>(t));
+            return ordenados.Select(t => FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(t)));
         }
 
         // ─────────────────────────────────────────────────────────────
@@ -549,7 +574,7 @@ namespace turnero_medico_backend.Services
             var (items, total) = await _turnoRepository.GetAllWithDetailsPagedAsync(page, pageSize, EstadoTurno.SolicitudPendiente);
             return new PagedResultDto<TurnoReadDto>
             {
-                Items = items.Select(t => _mapper.Map<TurnoReadDto>(t)),
+                Items = items.Select(t => FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(t))),
                 Total = total,
                 Page = page,
                 PageSize = pageSize
@@ -583,7 +608,7 @@ namespace turnero_medico_backend.Services
                 t.Estado == EstadoTurno.Completado);
 
             var ordenados = turnos.OrderByDescending(t => t.FechaHora);
-            return ordenados.Select(t => _mapper.Map<TurnoReadDto>(t));
+            return ordenados.Select(t => FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(t)));
         }
     }
 }

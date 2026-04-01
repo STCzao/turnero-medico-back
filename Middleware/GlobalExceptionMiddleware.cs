@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace turnero_medico_backend.Middleware
 {
@@ -43,16 +44,16 @@ namespace turnero_medico_backend.Middleware
 
                 case DbUpdateException dbEx:
                     // Error de base de datos: discriminamos entre unique constraint y FK violation
-                    // usando el código de error PostgreSQL del inner exception (23505 = unique, 23503 = FK).
+                    // leyendo SqlState directamente desde NpgsqlException (más robusto que parsear el mensaje).
                     context.Response.StatusCode = StatusCodes.Status409Conflict;
                     response.StatusCode = HttpStatusCode.Conflict;
-                    var innerMsg = dbEx.InnerException?.Message ?? string.Empty;
-                    if (innerMsg.Contains("23505") || innerMsg.Contains("duplicate key"))
+                    var sqlState = (dbEx.InnerException as NpgsqlException)?.SqlState ?? string.Empty;
+                    if (sqlState == "23505")
                     {
                         response.Message = "Dato duplicado";
                         response.Detail = "Ya existe un registro con ese valor. Verifique los datos ingresados (por ejemplo, el DNI).";
                     }
-                    else if (innerMsg.Contains("23503") || innerMsg.Contains("foreign key"))
+                    else if (sqlState == "23503")
                     {
                         response.Message = "Referencia inválida";
                         response.Detail = "Uno de los valores de referencia no existe (por ejemplo, la Obra Social indicada).";

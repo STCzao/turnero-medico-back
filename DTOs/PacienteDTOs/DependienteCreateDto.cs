@@ -1,10 +1,10 @@
 using System.ComponentModel.DataAnnotations;
-using turnero_medico_backend.Models.Entities;
 
 namespace turnero_medico_backend.DTOs.PacienteDTOs
 {
     // Registro de dependiente (menor de edad) por parte del paciente responsable.
     // NO crea cuenta de usuario — solo un registro en la tabla Pacientes.
+    // La cobertura médica se declara por turno, no en el perfil del dependiente.
     public class DependienteCreateDto
     {
         [Required(ErrorMessage = "El DNI es obligatorio")]
@@ -27,18 +27,5 @@ namespace turnero_medico_backend.DTOs.PacienteDTOs
 
         [RegularExpression(@"^[\d\s\-\+\(\)]{8,20}$", ErrorMessage = "El teléfono debe tener entre 8 y 20 caracteres")]
         public string? Telefono { get; set; }
-
-        //Datos de cobertura medica
-        [Range(0, 1, ErrorMessage = "TipoPago debe ser 0 (ObraSocial) o 1 (Particular)")]
-        public TipoPago TipoPago { get; set; } = TipoPago.ObraSocial;
-
-        [Range(1, int.MaxValue, ErrorMessage = "El ID de la Obra Social debe ser válido")]
-        public int? ObraSocialId { get; set; }
-
-        [StringLength(30, ErrorMessage = "El número de afiliado no puede exceder los 30 caracteres")]
-        public string NumeroAfiliado { get; set; } = string.Empty;
-
-        [StringLength(50, ErrorMessage = "El plan no puede exceder 50 caracteres")]
-        public string? PlanAfiliado { get; set; }
     }
 }

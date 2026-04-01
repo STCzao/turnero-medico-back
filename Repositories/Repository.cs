@@ -14,7 +14,7 @@ namespace turnero_medico_backend.Repositories
         private readonly ApplicationDbContext _context = context;
         private readonly DbSet<T> _dbSet = context.Set<T>();
 
-        public async Task<T?> GetByIdAsync(int id)
+        public virtual async Task<T?> GetByIdAsync(int id)
         {
             return await _dbSet.FindAsync(id);
         }
@@ -26,7 +26,7 @@ namespace turnero_medico_backend.Repositories
 
         // Paginación con orden por Id. EF.Property permite ordernar por nombre de columna
         // sin que T necesite implementar ninguna interfaz específica.
-        public async Task<(IEnumerable<T> Items, int Total)> GetAllPagedAsync(int page, int pageSize)
+        public virtual async Task<(IEnumerable<T> Items, int Total)> GetAllPagedAsync(int page, int pageSize)
         {
             var total = await _dbSet.CountAsync();
             var items = await _dbSet
@@ -37,13 +37,13 @@ namespace turnero_medico_backend.Repositories
             return (items, total);
         }
 
-        public async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
+        public virtual async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
         {
             return await _dbSet.Where(predicate).ToListAsync();
         }
 
         // Usa AnyAsync en lugar de FindAsync + null-check para evitar cargar la entidad completa
-        public async Task<bool> ExistAsync(int id)
+        public virtual async Task<bool> ExistAsync(int id)
             => await _dbSet.AnyAsync(e => EF.Property<int>(e, "Id") == id);
 
         public async Task<T> AddAsync(T entity)

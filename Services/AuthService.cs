@@ -15,7 +15,7 @@ namespace turnero_medico_backend.Services
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager,
         IConfiguration configuration,
-        IRepository<Paciente> pacienteRepository,
+        IPacienteRepository pacienteRepository,
         IRepository<Doctor> doctorRepository,
         ApplicationDbContext dbContext,
         IAuditService auditService) : IAuthService
@@ -23,7 +23,7 @@ namespace turnero_medico_backend.Services
         private readonly UserManager<ApplicationUser> _userManager = userManager;
         private readonly RoleManager<ApplicationRole> _roleManager = roleManager;
         private readonly IConfiguration _configuration = configuration;
-        private readonly IRepository<Paciente> _pacienteRepository = pacienteRepository;
+        private readonly IPacienteRepository _pacienteRepository = pacienteRepository;
         private readonly IRepository<Doctor> _doctorRepository = doctorRepository;
         private readonly ApplicationDbContext _dbContext = dbContext;
         private readonly IAuditService _auditService = auditService;
@@ -110,8 +110,6 @@ namespace turnero_medico_backend.Services
                         Telefono = telefono,
                         FechaNacimiento = fechaNacimiento,
                         EsMayorDeEdad = esMayorDeEdad,
-                        TipoPago = TipoPago.Particular,
-                        NumeroAfiliado = string.Empty,
                         UserId = newUser.Id
                     };
 

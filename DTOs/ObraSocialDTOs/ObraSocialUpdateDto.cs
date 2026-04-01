@@ -8,8 +8,7 @@ namespace turnero_medico_backend.DTOs.ObraSocialDTOs
         [StringLength(100, MinimumLength = 2, ErrorMessage = "El nombre debe tener entre {2} y {1} caracteres")]
         public string Nombre { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Debe indicar al menos una especialidad")]
-        [MinLength(1, ErrorMessage = "Debe indicar al menos una especialidad")]
+        // Especialidades cubiertas. Opcional: se puede actualizar la OS sin cambiar las especialidades.
         public List<int> EspecialidadIds { get; set; } = [];
 
         // Planes disponibles. Opcional.

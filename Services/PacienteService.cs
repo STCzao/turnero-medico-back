@@ -23,10 +23,11 @@ namespace turnero_medico_backend.Services
         private readonly IMapper _mapper = mapper;
         private readonly ICurrentUserService _currentUserService = currentUserService;
         private readonly IAuditService _auditService = auditService;
+
         public async Task<PagedResultDto<PacienteReadDto>> GetAllPagedAsync(int page, int pageSize)
         {
             pageSize = Math.Clamp(pageSize, 1, 100);
-            var (items, total) = await _pacienteRepository.GetAllWithObraSocialPagedAsync(page, pageSize);
+            var (items, total) = await _pacienteRepository.GetAllPagedAsync(page, pageSize);
             return new PagedResultDto<PacienteReadDto>
             {
                 Items = _mapper.Map<IEnumerable<PacienteReadDto>>(items),
@@ -39,9 +40,9 @@ namespace turnero_medico_backend.Services
         public async Task<PacienteReadDto?> GetByIdAsync(int id)
         {
             var userRole = _currentUserService.GetUserRole();
-            var userId   = _currentUserService.GetUserId();
+            var userId = _currentUserService.GetUserId();
 
-            var paciente = await _pacienteRepository.GetByIdWithObraSocialAsync(id);
+            var paciente = await _pacienteRepository.GetByIdAsync(id);
             if (paciente == null)
                 return null;
 
@@ -61,7 +62,8 @@ namespace turnero_medico_backend.Services
                     throw new UnauthorizedAccessException("No tienes permisos para ver este paciente.");
 
                 var tieneTurno = await _dbContext.Turnos
-                    .AnyAsync(t => t.DoctorId == doctorId && t.PacienteId == id);
+                    .AnyAsync(t => t.DoctorId == doctorId && t.PacienteId == id &&
+                        (t.Estado == EstadoTurno.Confirmado || t.Estado == EstadoTurno.Completado));
 
                 if (!tieneTurno)
                     throw new UnauthorizedAccessException("No tienes permisos para ver este paciente.");
@@ -86,7 +88,7 @@ namespace turnero_medico_backend.Services
             if (string.IsNullOrEmpty(userId))
                 throw new UnauthorizedAccessException("No se pudo obtener el ID del usuario autenticado");
 
-            var pacientes = await _pacienteRepository.FindWithObraSocialAsync(p => p.UserId == userId);
+            var pacientes = await _pacienteRepository.FindAsync(p => p.UserId == userId);
             var paciente = pacientes.FirstOrDefault();
 
             if (paciente == null)
@@ -105,12 +107,18 @@ namespace turnero_medico_backend.Services
 
         public async Task<PacienteReadDto> UpdateAsync(int id, PacienteUpdateDto dto)
         {
+            var userRole = _currentUserService.GetUserRole();
+            var userId = _currentUserService.GetUserId();
+
             var paciente = await _pacienteRepository.GetByIdAsync(id)
                 ?? throw new KeyNotFoundException($"Paciente con ID {id} no encontrado.");
 
+            if (userRole == "Paciente" && paciente.UserId != userId)
+                throw new UnauthorizedAccessException("No tienes permisos para modificar este paciente.");
+
             _mapper.Map(dto, paciente);
 
-            //Recalcular EsMayorDeEdad en base a FechaNacimiento actualizada
+            // Recalcular EsMayorDeEdad en base a FechaNacimiento actualizada
             var hoy = DateTime.UtcNow;
             var edad = hoy.Year - paciente.FechaNacimiento.Year;
             if (paciente.FechaNacimiento > hoy.AddYears(-edad)) edad--;
@@ -123,18 +131,23 @@ namespace turnero_medico_backend.Services
 
         public async Task<bool> DeleteAsync(int id)
         {
-            if (!await _pacienteRepository.ExistAsync(id))
-                throw new KeyNotFoundException($"Paciente con ID {id} no encontrado.");
+            var paciente = await _pacienteRepository.GetByIdAsync(id)
+                ?? throw new KeyNotFoundException($"Paciente con ID {id} no encontrado.");
 
-            var tieneTurnos = await _dbContext.Turnos.AnyAsync(t => t.PacienteId == id);
-            if (tieneTurnos)
-                throw new InvalidOperationException(
-                    "No se puede eliminar el paciente porque tiene turnos asociados. Cancele los turnos primero.");
+            var tieneTurnosActivos = await _dbContext.Turnos.AnyAsync(t =>
+                t.PacienteId == id &&
+                (t.Estado == EstadoTurno.Confirmado || t.Estado == EstadoTurno.SolicitudPendiente)
+            );
 
-            var deleted = await _pacienteRepository.DeleteAsync(id);
-            if (deleted)
-                await _auditService.LogAsync(AuditAccion.Eliminar, "Paciente", id.ToString());
-            return deleted;
+            if (tieneTurnosActivos)
+                throw new InvalidOperationException("No se puede eliminar un paciente con turnos activos.");
+
+            paciente.IsDeleted = true;
+            paciente.DeletedAt = DateTime.UtcNow;
+
+            await _pacienteRepository.UpdateAsync(paciente);
+            await _auditService.LogAsync(AuditAccion.Eliminar, "Paciente", id.ToString());
+            return true;
         }
 
         public async Task<bool> ExistAsync(int id)
@@ -151,13 +164,11 @@ namespace turnero_medico_backend.Services
             if (string.IsNullOrEmpty(userId))
                 throw new UnauthorizedAccessException("No se pudo obtener el ID del usuario autenticado.");
 
-            var all = await _pacienteRepository.FindWithObraSocialAsync(p => p.ResponsableId == userId);
-            var allList = all.ToList();
-            var items = allList.Skip((page - 1) * pageSize).Take(pageSize);
+            var (items, total) = await _pacienteRepository.GetDependientesPagedAsync(userId, page, pageSize);
             return new PagedResultDto<PacienteReadDto>
             {
                 Items = _mapper.Map<IEnumerable<PacienteReadDto>>(items),
-                Total = allList.Count,
+                Total = total,
                 Page = page,
                 PageSize = pageSize
             };
@@ -180,13 +191,6 @@ namespace turnero_medico_backend.Services
                 throw new InvalidOperationException(
                     "Los pacientes dependientes no pueden registrar sus propios dependientes.");
 
-            if (dto.ObraSocialId.HasValue)
-            {
-                var osExiste = await _dbContext.ObrasSociales.AnyAsync(o => o.Id == dto.ObraSocialId.Value);
-                if (!osExiste)
-                    throw new KeyNotFoundException($"La obra social con ID {dto.ObraSocialId} no existe.");
-            }
-
             var dependiente = new Paciente
             {
                 Dni = dto.Dni,
@@ -196,14 +200,11 @@ namespace turnero_medico_backend.Services
                 Telefono = dto.Telefono ?? string.Empty,
                 ResponsableId = userId,
                 EsMayorDeEdad = false,
-                UserId = null, // Los dependientes no tienen cuenta de usuario
-                TipoPago = dto.TipoPago,
-                ObraSocialId = dto.ObraSocialId,
-                NumeroAfiliado = dto.NumeroAfiliado,
-                PlanAfiliado = dto.PlanAfiliado
+                UserId = null  // Los dependientes no tienen cuenta de usuario
             };
 
             var creado = await _pacienteRepository.AddAsync(dependiente);
+            await _auditService.LogAsync(AuditAccion.Crear, "Dependiente", creado.Id.ToString());
             return _mapper.Map<PacienteReadDto>(creado);
         }
 
@@ -219,14 +220,10 @@ namespace turnero_medico_backend.Services
             if (dependiente.ResponsableId != userId)
                 throw new UnauthorizedAccessException("No tienes permisos para modificar este dependiente.");
 
-            dependiente.Nombre          = dto.Nombre;
-            dependiente.Apellido        = dto.Apellido;
+            dependiente.Nombre = dto.Nombre;
+            dependiente.Apellido = dto.Apellido;
             dependiente.FechaNacimiento = dto.FechaNacimiento;
-            dependiente.Telefono        = dto.Telefono ?? string.Empty;
-            dependiente.TipoPago        = dto.TipoPago;
-            dependiente.ObraSocialId    = dto.ObraSocialId;
-            dependiente.NumeroAfiliado  = dto.NumeroAfiliado;
-            dependiente.PlanAfiliado    = dto.PlanAfiliado;
+            dependiente.Telefono = dto.Telefono ?? string.Empty;
 
             // Recalcular mayoría de edad por si cambió la fecha
             var hoy = DateTime.UtcNow;
@@ -248,19 +245,16 @@ namespace turnero_medico_backend.Services
             var dependiente = await _pacienteRepository.GetByIdAsync(id)
                 ?? throw new KeyNotFoundException($"Dependiente con ID {id} no encontrado.");
 
-            var esAdmin = _currentUserService.GetUserRole() == "Admin";
-            if (!esAdmin && dependiente.ResponsableId != userId)
+            var rol = _currentUserService.GetUserRole();
+            if (rol != "Admin" && rol != "Secretaria" && dependiente.ResponsableId != userId)
                 throw new UnauthorizedAccessException("No tienes permisos para eliminar este dependiente.");
 
-            var tieneTurnos = await _dbContext.Turnos.AnyAsync(t => t.PacienteId == id);
-            if (tieneTurnos)
-                throw new InvalidOperationException(
-                    "No se puede eliminar el dependiente porque tiene turnos asociados. Cancele los turnos primero.");
+            dependiente.IsDeleted = true;
+            dependiente.DeletedAt = DateTime.UtcNow;
 
-            var deleted = await _pacienteRepository.DeleteAsync(id);
-            if (deleted)
-                await _auditService.LogAsync(AuditAccion.Eliminar, "Dependiente", id.ToString());
-            return deleted;
+            await _pacienteRepository.UpdateAsync(dependiente);
+            await _auditService.LogAsync(AuditAccion.Eliminar, "Dependiente", id.ToString());
+            return true;
         }
 
         // ─────────────────────────────────────────────────────────────
@@ -273,7 +267,7 @@ namespace turnero_medico_backend.Services
             if (string.IsNullOrEmpty(userId))
                 throw new UnauthorizedAccessException("No se pudo obtener el ID del usuario autenticado.");
 
-            var pacientes = await _pacienteRepository.FindWithObraSocialAsync(p => p.UserId == userId);
+            var pacientes = await _pacienteRepository.FindAsync(p => p.UserId == userId);
             var paciente = pacientes.FirstOrDefault();
             if (paciente == null)
                 return null;
@@ -281,6 +275,7 @@ namespace turnero_medico_backend.Services
             var turnos = await _dbContext.Turnos
                 .Include(t => t.Especialidad)
                 .Include(t => t.Doctor)
+                .Include(t => t.ObraSocial)
                 .Where(t => t.PacienteId == paciente.Id)
                 .OrderByDescending(t => t.CreatedAt)
                 .AsNoTracking()
@@ -288,38 +283,31 @@ namespace turnero_medico_backend.Services
 
             await _auditService.LogAsync(AuditAccion.ExportarDatos, "Paciente", paciente.Id.ToString());
 
-            var tipoPagoLabel = paciente.TipoPago switch
-            {
-                TipoPago.ObraSocial => "ObraSocial",
-                _                   => "Particular"
-            };
-
             return new PacienteExportDto
             {
                 FechaExportacion = DateTime.UtcNow,
-                Id               = paciente.Id,
-                Dni              = paciente.Dni,
-                Nombre           = paciente.Nombre,
-                Apellido         = paciente.Apellido,
-                Email            = paciente.Email ?? string.Empty,
-                Telefono         = paciente.Telefono,
-                FechaNacimiento  = paciente.FechaNacimiento,
-                EsMayorDeEdad    = paciente.EsMayorDeEdad,
-                TipoPago         = tipoPagoLabel,
-                ObraSocialNombre = paciente.ObraSocial?.Nombre,
-                NumeroAfiliado   = paciente.NumeroAfiliado,
-                PlanAfiliado     = paciente.PlanAfiliado,
+                Id = paciente.Id,
+                Dni = paciente.Dni,
+                Nombre = paciente.Nombre,
+                Apellido = paciente.Apellido,
+                Email = paciente.Email ?? string.Empty,
+                Telefono = paciente.Telefono,
+                FechaNacimiento = paciente.FechaNacimiento,
+                EsMayorDeEdad = paciente.EsMayorDeEdad,
                 Turnos = turnos.Select(t => new TurnoExportItem
                 {
-                    Id                 = t.Id,
-                    FechaHora          = t.FechaHora,
-                    Motivo             = t.Motivo,
-                    Estado             = t.Estado,
+                    Id = t.Id,
+                    FechaHora = t.FechaHora,
+                    Motivo = t.Motivo,
+                    Estado = t.Estado,
                     EspecialidadNombre = t.Especialidad?.Nombre ?? string.Empty,
-                    DoctorNombre       = t.Doctor != null
+                    DoctorNombre = t.Doctor != null
                         ? $"{t.Doctor.Nombre} {t.Doctor.Apellido}"
                         : string.Empty,
-                    CreadoEn           = t.CreatedAt,
+                    ObraSocialNombre = t.ObraSocial?.Nombre,
+                    NumeroAfiliadoDeclarado = t.NumeroAfiliadoDeclarado,
+                    PlanAfiliadoDeclarado = t.PlanAfiliadoDeclarado,
+                    CreadoEn = t.CreatedAt,
                     ObservacionClinica = t.ObservacionClinica
                 })
             };

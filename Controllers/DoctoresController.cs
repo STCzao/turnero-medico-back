@@ -79,7 +79,7 @@ namespace turnero_medico_backend.Controllers
 
 
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin,Doctor")]
         public async Task<ActionResult<DoctorReadDto>> Update(int id, DoctorUpdateDto dto)
         {
             if (!ModelState.IsValid)

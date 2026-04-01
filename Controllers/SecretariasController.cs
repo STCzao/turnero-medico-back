@@ -49,6 +49,7 @@ public class SecretariasController(ISecretariaService _service) : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult> Delete(string id)
     {
         await _service.DeleteAsync(id);
