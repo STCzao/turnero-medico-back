@@ -6,6 +6,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace turnero_medico_backend.Migrations
 {
     /// <inheritdoc />
+    [Migration("20260403000001_CreateSecretariasTable")]
     public partial class CreateSecretariasTable : Migration
     {
         /// <inheritdoc />
