@@ -43,22 +43,24 @@ namespace turnero_medico_backend.Data
             .HasOne(t => t.Doctor)
             .WithMany(d => d.Turnos)
             .HasForeignKey(t => t.DoctorId)
-            .OnDelete(DeleteBehavior.Restrict)
+            .OnDelete(DeleteBehavior.SetNull)
             .IsRequired(false);
 
-            // Relación: Turno-Especialidad (muchos-a-uno)
+            // Relación: Turno-Especialidad (muchos-a-uno, nullable: especialidad puede eliminarse)
             modelBuilder.Entity<Turno>()
                 .HasOne(t => t.Especialidad)
                 .WithMany()
                 .HasForeignKey(t => t.EspecialidadId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.SetNull)
+                .IsRequired(false);
 
-            // Doctor → Especialidad (muchos-a-uno)
+            // Doctor → Especialidad (muchos-a-uno, nullable: especialidad puede eliminarse)
             modelBuilder.Entity<Doctor>()
                 .HasOne(d => d.Especialidad)
                 .WithMany(e => e.Doctores)
                 .HasForeignKey(d => d.EspecialidadId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.SetNull)
+                .IsRequired(false);
 
             // ObraSocial ↔ Especialidad (muchos-a-muchos)
             modelBuilder.Entity<ObraSocial>()
@@ -162,6 +164,11 @@ namespace turnero_medico_backend.Data
 
             modelBuilder.Entity<Horario>()
                 .HasIndex(h => new { h.DoctorId, h.DiaSemana });
+
+            // Soft Delete: filtros globales — excluyen registros borrados lógicamente
+            modelBuilder.Entity<Doctor>().HasQueryFilter(d => !d.IsDeleted);
+            modelBuilder.Entity<Paciente>().HasQueryFilter(p => !p.IsDeleted);
+            modelBuilder.Entity<Secretaria>().HasQueryFilter(s => !s.IsDeleted);
         }
     }
 }

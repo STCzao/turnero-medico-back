@@ -317,8 +317,8 @@ namespace turnero_medico_backend.Services
                 // Validar que la especialidad del doctor coincida con la del turno
                 if (doctor.EspecialidadId != turno.EspecialidadId)
                 {
-                    var espDoctor = await _especialidadRepository.GetByIdAsync(doctor.EspecialidadId);
-                    var espTurno = await _especialidadRepository.GetByIdAsync(turno.EspecialidadId);
+                    var espDoctor = doctor.EspecialidadId.HasValue ? await _especialidadRepository.GetByIdAsync(doctor.EspecialidadId.Value) : null;
+                    var espTurno = turno.EspecialidadId.HasValue ? await _especialidadRepository.GetByIdAsync(turno.EspecialidadId.Value) : null;
                     throw new InvalidOperationException(
                         $"El doctor '{doctor.Nombre} {doctor.Apellido}' es especialista en '{espDoctor?.Nombre}', "
                         + $"pero el turno requiere '{espTurno?.Nombre}'.");

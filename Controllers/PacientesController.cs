@@ -84,6 +84,14 @@ namespace turnero_medico_backend.Controllers
             return NoContent();
         }
 
+        [HttpPut("{id}/reactivar")]
+        [Authorize(Roles = "Admin,Secretaria")]
+        public async Task<ActionResult<PacienteReadDto>> Reactivar(int id)
+        {
+            var paciente = await _service.ReactivarAsync(id);
+            return Ok(paciente);
+        }
+
         // Dependientes del paciente autenticado
         [HttpGet("mis-dependientes")]
         [Authorize(Roles = "Paciente,Admin,Secretaria")]

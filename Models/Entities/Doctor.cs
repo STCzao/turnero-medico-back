@@ -14,7 +14,7 @@ namespace turnero_medico_backend.Models.Entities
 
         public string Apellido { get; set; } = string.Empty;
 
-        public int EspecialidadId { get; set; }
+        public int? EspecialidadId { get; set; }
 
         public Especialidad? Especialidad { get; set; }
         
@@ -26,6 +26,10 @@ namespace turnero_medico_backend.Models.Entities
 
         // FK → AspNetUsers.Id. Une Doctor con su cuenta de usuario.
         public string? UserId { get; set; }
+
+        // ===== Borrado lógico =====
+        public bool IsDeleted { get; set; } = false;
+        public DateTime? DeletedAt { get; set; }
         
         // Relación: Un doctor puede tener muchos turnos
         public ICollection<Turno> Turnos { get; set; } = new List<Turno>();

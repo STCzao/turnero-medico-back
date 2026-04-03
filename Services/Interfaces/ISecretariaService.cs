@@ -11,4 +11,5 @@ public interface ISecretariaService
     Task<SecretariaReadDto> CreateAsync(SecretariaCreateDto dto);
     Task<SecretariaReadDto> UpdateAsync(int id, SecretariaUpdateDto dto);
     Task<bool> DeleteAsync(int id);
+    Task<SecretariaReadDto> ReactivarAsync(int id);
 }

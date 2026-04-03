@@ -100,5 +100,13 @@ namespace turnero_medico_backend.Controllers
             await _service.DeleteAsync(id);
             return NoContent();
         }
+
+        [HttpPut("{id}/reactivar")]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult<DoctorReadDto>> Reactivar(int id)
+        {
+            var doctor = await _service.ReactivarAsync(id);
+            return Ok(doctor);
+        }
     }
 }
