@@ -32,7 +32,7 @@ namespace turnero_medico_backend.Services
             {
                 Id = h.Id,
                 DoctorId = h.DoctorId,
-                DoctorNombre = $"{h.Doctor.Nombre} {h.Doctor.Apellido}",
+                DoctorNombre = h.Doctor != null ? $"{h.Doctor.Nombre} {h.Doctor.Apellido}" : "Sin asignar",
                 DiaSemana = h.DiaSemana,
                 DiaSemanaTexto = DiasNombre[h.DiaSemana],
                 HoraInicio = h.HoraInicio,
