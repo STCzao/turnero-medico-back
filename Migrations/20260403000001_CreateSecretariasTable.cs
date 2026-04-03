@@ -1,11 +1,14 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
-using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+using turnero_medico_backend.Data;
 
 #nullable disable
 
 namespace turnero_medico_backend.Migrations
 {
     /// <inheritdoc />
+    [DbContext(typeof(ApplicationDbContext))]
     [Migration("20260403000001_CreateSecretariasTable")]
     public partial class CreateSecretariasTable : Migration
     {
