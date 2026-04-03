@@ -20,5 +20,9 @@ namespace turnero_medico_backend.Models.Entities
 
         // FK → AspNetUsers.Id. Null hasta que el Admin registre la cuenta.
         public string? UserId { get; set; }
+
+        // ===== Borrado lógico =====
+        public bool IsDeleted { get; set; } = false;
+        public DateTime? DeletedAt { get; set; }
     }
 }

@@ -56,8 +56,11 @@ public class SecretariaService(
 
     public async Task<SecretariaReadDto> CreateAsync(SecretariaCreateDto dto)
     {
-        var existentes = await _repository.FindAsync(s => s.Dni == dto.Dni.Trim());
-        if (existentes.Any())
+        // IgnoreQueryFilters para detectar también soft-deleted con el mismo DNI
+        var existente = await _dbContext.Secretarias
+            .IgnoreQueryFilters()
+            .AnyAsync(s => s.Dni == dto.Dni.Trim());
+        if (existente)
             throw new InvalidOperationException("Ya existe una secretaria con ese DNI.");
 
         var secretaria = new Secretaria
@@ -129,28 +132,20 @@ public class SecretariaService(
         var secretaria = await _repository.GetByIdAsync(id)
             ?? throw new KeyNotFoundException($"Secretaria con ID {id} no encontrada.");
 
-        // Ambas operaciones dentro de una transacción.
-        // Se elimina la entidad primero para que ON DELETE SET NULL limpie UserId
-        // antes de intentar borrar el usuario de Identity.
         await using var transaction = await _dbContext.Database.BeginTransactionAsync();
         try
         {
-            var userId = secretaria.UserId;
+            secretaria.IsDeleted = true;
+            secretaria.DeletedAt = DateTime.UtcNow;
+            await _repository.UpdateAsync(secretaria);
 
-            await _repository.DeleteAsync(id);
-
-            if (!string.IsNullOrEmpty(userId))
+            if (!string.IsNullOrEmpty(secretaria.UserId))
             {
-                var user = await _userManager.FindByIdAsync(userId);
+                var user = await _userManager.FindByIdAsync(secretaria.UserId);
                 if (user != null)
                 {
-                    var result = await _userManager.DeleteAsync(user);
-                    if (!result.Succeeded)
-                    {
-                        await transaction.RollbackAsync();
-                        var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                        throw new InvalidOperationException($"Error al eliminar la cuenta de usuario: {errors}");
-                    }
+                    await _userManager.SetLockoutEnabledAsync(user, true);
+                    await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue);
                 }
             }
 
@@ -164,6 +159,40 @@ public class SecretariaService(
 
         await _auditService.LogAsync(AuditAccion.Eliminar, "Secretaria", id.ToString());
         return true;
+    }
+
+    public async Task<SecretariaReadDto> ReactivarAsync(int id)
+    {
+        var secretaria = await _repository.GetByIdUnscopedAsync(id)
+            ?? throw new KeyNotFoundException($"Secretaria con ID {id} no encontrada.");
+
+        if (!secretaria.IsDeleted)
+            throw new InvalidOperationException("La secretaria ya se encuentra activa.");
+
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync();
+        try
+        {
+            secretaria.IsDeleted = false;
+            secretaria.DeletedAt = null;
+            await _repository.UpdateAsync(secretaria);
+
+            if (!string.IsNullOrEmpty(secretaria.UserId))
+            {
+                var user = await _userManager.FindByIdAsync(secretaria.UserId);
+                if (user != null)
+                    await _userManager.SetLockoutEndDateAsync(user, null);
+            }
+
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+
+        await _auditService.LogAsync(AuditAccion.Actualizar, "Secretaria", id.ToString());
+        return ToDto(secretaria);
     }
 
     private static SecretariaReadDto ToDto(Secretaria s) => new()

@@ -151,6 +151,21 @@ namespace turnero_medico_backend.Services
             return true;
         }
 
+        public async Task<PacienteReadDto> ReactivarAsync(int id)
+        {
+            var paciente = await _pacienteRepository.GetByIdUnscopedAsync(id)
+                ?? throw new KeyNotFoundException($"Paciente con ID {id} no encontrado.");
+
+            if (!paciente.IsDeleted)
+                throw new InvalidOperationException("El paciente ya se encuentra activo.");
+
+            paciente.IsDeleted = false;
+            paciente.DeletedAt = null;
+            await _pacienteRepository.UpdateAsync(paciente);
+            await _auditService.LogAsync(AuditAccion.Actualizar, "Paciente", id.ToString());
+            return _mapper.Map<PacienteReadDto>(paciente);
+        }
+
         public async Task<bool> ExistAsync(int id)
             => await _pacienteRepository.ExistAsync(id);
 

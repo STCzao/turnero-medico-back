@@ -1,5 +1,5 @@
 using AutoMapper;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 using turnero_medico_backend.Data;
 using turnero_medico_backend.DTOs.Common;
 using turnero_medico_backend.DTOs.DoctorDTOs;
@@ -20,7 +20,8 @@ namespace turnero_medico_backend.Services
         IMapper mapper,
         ICurrentUserService currentUserService,
         IAuditService auditService,
-        ApplicationDbContext dbContext
+        ApplicationDbContext dbContext,
+        UserManager<ApplicationUser> userManager
     ) : IDoctorService
     {
         private readonly IDoctorRepository _repository = repository;
@@ -29,6 +30,7 @@ namespace turnero_medico_backend.Services
         private readonly ICurrentUserService _currentUserService = currentUserService;
         private readonly IAuditService _auditService = auditService;
         private readonly ApplicationDbContext _dbContext = dbContext;
+        private readonly UserManager<ApplicationUser> _userManager = userManager;
         public async Task<PagedResultDto<DoctorReadDto>> GetAllPagedAsync(int page, int pageSize)
         {
             pageSize = Math.Clamp(pageSize, 1, 100);
@@ -96,25 +98,71 @@ namespace turnero_medico_backend.Services
 
         public async Task<bool> DeleteAsync(int id)
         {
-            if (!await _repository.ExistAsync(id))
-                throw new KeyNotFoundException($"Doctor con ID {id} no encontrado.");
+            var doctor = await _repository.GetByIdAsync(id)
+                ?? throw new KeyNotFoundException($"Doctor con ID {id} no encontrado.");
 
-            // Restricción de integridad: no se puede borrar un doctor con turnos confirmados futuros.
-            // El Admin debe cancelar o reasignar esos turnos antes de eliminar.
-            // Turnos pasados (historial) no impiden la eliminación.
-            var tieneTurnosFuturos = await _dbContext.Turnos.AnyAsync(t =>
-                t.DoctorId == id &&
-                t.Estado == EstadoTurno.Confirmado &&
-                t.FechaHora.HasValue &&
-                t.FechaHora > DateTime.UtcNow);
-            if (tieneTurnosFuturos)
-                throw new InvalidOperationException(
-                    "No se puede eliminar el doctor porque tiene turnos confirmados futuros. Cancele o reasigne esos turnos primero.");
+            await using var transaction = await _dbContext.Database.BeginTransactionAsync();
+            try
+            {
+                doctor.IsDeleted = true;
+                doctor.DeletedAt = DateTime.UtcNow;
+                await _repository.UpdateAsync(doctor);
 
-            var deleted = await _repository.DeleteAsync(id);
-            if (deleted)
-                await _auditService.LogAsync(AuditAccion.Eliminar, "Doctor", id.ToString());
-            return deleted;
+                if (!string.IsNullOrEmpty(doctor.UserId))
+                {
+                    var user = await _userManager.FindByIdAsync(doctor.UserId);
+                    if (user != null)
+                    {
+                        await _userManager.SetLockoutEnabledAsync(user, true);
+                        await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue);
+                    }
+                }
+
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+
+            await _auditService.LogAsync(AuditAccion.Eliminar, "Doctor", id.ToString());
+            return true;
+        }
+
+        public async Task<DoctorReadDto> ReactivarAsync(int id)
+        {
+            var doctor = await _repository.GetByIdUnscopedAsync(id)
+                ?? throw new KeyNotFoundException($"Doctor con ID {id} no encontrado.");
+
+            if (!doctor.IsDeleted)
+                throw new InvalidOperationException("El doctor ya se encuentra activo.");
+
+            await using var transaction = await _dbContext.Database.BeginTransactionAsync();
+            try
+            {
+                doctor.IsDeleted = false;
+                doctor.DeletedAt = null;
+                await _repository.UpdateAsync(doctor);
+
+                if (!string.IsNullOrEmpty(doctor.UserId))
+                {
+                    var user = await _userManager.FindByIdAsync(doctor.UserId);
+                    if (user != null)
+                        await _userManager.SetLockoutEndDateAsync(user, null);
+                }
+
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+
+            await _auditService.LogAsync(AuditAccion.Actualizar, "Doctor", id.ToString());
+            var reactivado = await _repository.GetByIdWithEspecialidadAsync(id);
+            return _mapper.Map<DoctorReadDto>(reactivado);
         }
 
         public async Task<bool> ExistAsync(int id)

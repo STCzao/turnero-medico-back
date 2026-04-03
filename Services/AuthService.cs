@@ -48,9 +48,11 @@ namespace turnero_medico_backend.Services
             if (userExists != null)
                 return (false, "El email ya está registrado como usuario");
 
-            // Buscar si ya existe un Paciente con este DNI (dependiente o creado por secretaria)
-            var pacientesConDni = await _pacienteRepository.FindAsync(p => p.Dni == dni);
-            var pacienteExistente = pacientesConDni.FirstOrDefault();
+            // Buscar si ya existe un Paciente con este DNI (dependiente o creado por secretaria).
+            // IgnoreQueryFilters para encontrar también pacientes soft-deleted y permitir reactivación.
+            var pacienteExistente = await _dbContext.Pacientes
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(p => p.Dni == dni);
 
             // Si el paciente ya existe Y ya tiene cuenta vinculada, rechazar
             if (pacienteExistente != null && !string.IsNullOrEmpty(pacienteExistente.UserId))
@@ -91,10 +93,13 @@ namespace turnero_medico_backend.Services
                 if (pacienteExistente != null)
                 {
                     // Paciente ya existía (dependiente/creado por secretaria) → vincular por DNI
+                    // Si estaba soft-deleted, reactivarlo al vincularse con una cuenta.
                     pacienteExistente.UserId = newUser.Id;
                     pacienteExistente.Email = email;
                     pacienteExistente.Telefono = telefono;
                     pacienteExistente.ResponsableId = null; // Ahora es autónomo
+                    pacienteExistente.IsDeleted = false;
+                    pacienteExistente.DeletedAt = null;
                     await _pacienteRepository.UpdateAsync(pacienteExistente);
 
                     newUser.PacienteId = pacienteExistente.Id;
@@ -152,9 +157,11 @@ namespace turnero_medico_backend.Services
             if (userExists != null)
                 return (false, "El email ya está registrado como usuario");
 
-            // Buscar si ya existe un Doctor con esta matrícula
-            var doctoresConMatricula = await _doctorRepository.FindAsync(d => d.Matricula == matricula);
-            var doctorExistente = doctoresConMatricula.FirstOrDefault();
+            // Buscar si ya existe un Doctor con esta matrícula.
+            // IgnoreQueryFilters para encontrar también doctores soft-deleted y permitir reactivación.
+            var doctorExistente = await _dbContext.Doctores
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(d => d.Matricula == matricula);
 
             // Si el doctor ya existe Y ya tiene cuenta vinculada, rechazar
             if (doctorExistente != null && !string.IsNullOrEmpty(doctorExistente.UserId))
@@ -190,9 +197,12 @@ namespace turnero_medico_backend.Services
                 if (doctorExistente != null)
                 {
                     // Doctor ya existía (creado vía CRUD sin cuenta) → vincular por Matrícula
+                    // Si estaba soft-deleted, reactivarlo al vincularse con una cuenta.
                     doctorExistente.UserId = newUser.Id;
                     doctorExistente.Email = email;
                     doctorExistente.Telefono = telefono;
+                    doctorExistente.IsDeleted = false;
+                    doctorExistente.DeletedAt = null;
                     await _doctorRepository.UpdateAsync(doctorExistente);
 
                     newUser.DoctorId = doctorExistente.Id;
@@ -249,11 +259,11 @@ namespace turnero_medico_backend.Services
             if (userExists != null)
                 return (false, "El email ya está registrado como usuario");
 
-            // Buscar si ya existe una Secretaria con este DNI (creada vía CRUD sin cuenta)
-            var secretariasConDni = await _dbContext.Secretarias
-                .Where(s => s.Dni == dni.Trim())
-                .ToListAsync();
-            var secretariaExistente = secretariasConDni.FirstOrDefault();
+            // Buscar si ya existe una Secretaria con este DNI (creada vía CRUD sin cuenta).
+            // IgnoreQueryFilters para encontrar también secretarias soft-deleted y permitir reactivación.
+            var secretariaExistente = await _dbContext.Secretarias
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(s => s.Dni == dni.Trim());
 
             if (secretariaExistente != null && !string.IsNullOrEmpty(secretariaExistente.UserId))
                 return (false, "El DNI ya está vinculado a una cuenta de usuario");
@@ -288,8 +298,11 @@ namespace turnero_medico_backend.Services
                 if (secretariaExistente != null)
                 {
                     // Secretaria ya existía (creada vía CRUD sin cuenta) → vincular por DNI
+                    // Si estaba soft-deleted, reactivarla al vincularse con una cuenta.
                     secretariaExistente.UserId = newUser.Id;
                     secretariaExistente.Email = email;
+                    secretariaExistente.IsDeleted = false;
+                    secretariaExistente.DeletedAt = null;
                     _dbContext.Secretarias.Update(secretariaExistente);
                     await _dbContext.SaveChangesAsync();
 
@@ -368,6 +381,10 @@ namespace turnero_medico_backend.Services
             var user = await _userManager.FindByIdAsync(userId);
             if (user?.RefreshTokenHash is null || user.RefreshTokenExpiry is null)
                 return (false, string.Empty, string.Empty, "Token inválido o expirado.");
+
+            // Verificar que la cuenta no esté bloqueada (soft-deleted vía lockout)
+            if (await _userManager.IsLockedOutAsync(user))
+                return (false, string.Empty, string.Empty, "La cuenta está desactivada.");
 
             if (user.RefreshTokenExpiry < DateTime.UtcNow)
                 return (false, string.Empty, string.Empty, "El refresh token ha expirado. Iniciá sesión nuevamente.");

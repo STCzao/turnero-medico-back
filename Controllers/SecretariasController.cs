@@ -76,4 +76,11 @@ public class SecretariasController(ISecretariaService _service) : ControllerBase
         await _service.DeleteAsync(id);
         return NoContent();
     }
+
+    [HttpPut("{id}/reactivar")]
+    public async Task<ActionResult<SecretariaReadDto>> Reactivar(int id)
+    {
+        var secretaria = await _service.ReactivarAsync(id);
+        return Ok(secretaria);
+    }
 }

@@ -19,6 +19,10 @@ namespace turnero_medico_backend.Repositories.Interfaces
 
         // DELETE
         Task<bool> DeleteAsync(int id);
+        Task<bool> SoftDeleteAsync(int id);
+
+        // UNSCOPED (ignora Global Query Filters — solo para reactivación y vinculación de cuentas)
+        Task<T?> GetByIdUnscopedAsync(int id);
 
         // SAVE
         Task<bool> SaveChangesAsync();

@@ -16,7 +16,7 @@ namespace turnero_medico_backend.Repositories
 
         public virtual async Task<T?> GetByIdAsync(int id)
         {
-            return await _dbSet.FindAsync(id);
+            return await _dbSet.FirstOrDefaultAsync(e => EF.Property<int>(e, "Id") == id);
         }
 
         public async Task<IEnumerable<T>> GetAllAsync()
@@ -69,6 +69,24 @@ namespace turnero_medico_backend.Repositories
             _dbSet.Remove(entity);
             await SaveChangesAsync();
             return true;
+        }
+
+        public async Task<bool> SoftDeleteAsync(int id)
+        {
+            var entity = await GetByIdAsync(id);
+            if (entity == null)
+                return false;
+
+            _context.Entry(entity).Property("IsDeleted").CurrentValue = true;
+            _context.Entry(entity).Property("DeletedAt").CurrentValue = DateTime.UtcNow;
+            await SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<T?> GetByIdUnscopedAsync(int id)
+        {
+            return await _dbSet.IgnoreQueryFilters()
+                .FirstOrDefaultAsync(e => EF.Property<int>(e, "Id") == id);
         }
 
         public async Task<bool> SaveChangesAsync()

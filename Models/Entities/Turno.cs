@@ -9,7 +9,7 @@ namespace turnero_medico_backend.Models.Entities
 
         public string Motivo { get; set; } = string.Empty;
 
-        public int EspecialidadId { get; set; }
+        public int? EspecialidadId { get; set; }
 
         // Estado inicial siempre SolicitudPendiente. Ver EstadoTurno para valores válidos.
         public string Estado { get; set; } = EstadoTurno.SolicitudPendiente;
@@ -44,6 +44,6 @@ namespace turnero_medico_backend.Models.Entities
         public virtual Paciente Paciente { get; set; } = null!;
         public virtual Doctor? Doctor { get; set; }
         public virtual ObraSocial? ObraSocial { get; set; }
-        public virtual Especialidad Especialidad { get; set; } = null!;
+        public virtual Especialidad? Especialidad { get; set; }
     }
 }
