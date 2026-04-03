@@ -86,6 +86,15 @@ namespace turnero_medico_backend.Services
             var doctor = await _repository.GetByIdWithEspecialidadAsync(id)
                 ?? throw new KeyNotFoundException($"Doctor con ID {id} no encontrado.");
 
+            // Un Doctor autenticado solo puede editar su propio perfil
+            var userRole = _currentUserService.GetUserRole();
+            if (userRole == "Doctor")
+            {
+                var userId = _currentUserService.GetUserId();
+                if (doctor.UserId != userId)
+                    throw new UnauthorizedAccessException("No tienes permisos para modificar este doctor.");
+            }
+
             var valoresAnteriores = AuditSnapshot.ToJson(new { doctor.Nombre, doctor.Apellido, doctor.Email, doctor.Telefono, doctor.EspecialidadId });
 
             _ = await _especialidadRepository.GetByIdAsync(dto.EspecialidadId)

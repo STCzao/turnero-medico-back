@@ -46,7 +46,7 @@ namespace turnero_medico_backend.Services
             // Verificar si el email ya tiene cuenta
             var userExists = await _userManager.FindByEmailAsync(email);
             if (userExists != null)
-                throw new InvalidOperationException("El email ya está registrado como usuario");
+                throw new InvalidOperationException("No se pudo completar el registro. Verifique los datos ingresados.");
 
             // Buscar si ya existe un Paciente con este DNI (dependiente o creado por secretaria).
             // IgnoreQueryFilters para encontrar también pacientes soft-deleted y permitir reactivación.
@@ -56,7 +56,7 @@ namespace turnero_medico_backend.Services
 
             // Si el paciente ya existe Y ya tiene cuenta vinculada, rechazar
             if (pacienteExistente != null && !string.IsNullOrEmpty(pacienteExistente.UserId))
-                throw new InvalidOperationException("El DNI ya está vinculado a una cuenta de usuario");
+                throw new InvalidOperationException("No se pudo completar el registro. Verifique los datos ingresados.");
 
             // Calcular si es mayor de edad
             var edad = DateTime.UtcNow.Year - fechaNacimiento.Year;
@@ -155,7 +155,7 @@ namespace turnero_medico_backend.Services
             // Verificar si el email ya tiene cuenta
             var userExists = await _userManager.FindByEmailAsync(email);
             if (userExists != null)
-                throw new InvalidOperationException("El email ya está registrado como usuario");
+                throw new InvalidOperationException("No se pudo completar el registro. Verifique los datos ingresados.");
 
             // Buscar si ya existe un Doctor con esta matrícula.
             // IgnoreQueryFilters para encontrar también doctores soft-deleted y permitir reactivación.
@@ -165,7 +165,7 @@ namespace turnero_medico_backend.Services
 
             // Si el doctor ya existe Y ya tiene cuenta vinculada, rechazar
             if (doctorExistente != null && !string.IsNullOrEmpty(doctorExistente.UserId))
-                throw new InvalidOperationException("La matrícula ya está vinculada a una cuenta de usuario");
+                throw new InvalidOperationException("No se pudo completar el registro. Verifique los datos ingresados.");
 
             // --- Todo dentro de una transacción ---
             await using var transaction = await _dbContext.Database.BeginTransactionAsync();
@@ -258,7 +258,7 @@ namespace turnero_medico_backend.Services
         {
             var userExists = await _userManager.FindByEmailAsync(email);
             if (userExists != null)
-                throw new InvalidOperationException("El email ya está registrado como usuario");
+                throw new InvalidOperationException("No se pudo completar el registro. Verifique los datos ingresados.");
 
             // Buscar si ya existe una Secretaria con este DNI (creada vía CRUD sin cuenta).
             // IgnoreQueryFilters para encontrar también secretarias soft-deleted y permitir reactivación.
@@ -267,7 +267,7 @@ namespace turnero_medico_backend.Services
                 .FirstOrDefaultAsync(s => s.Dni == dni.Trim());
 
             if (secretariaExistente != null && !string.IsNullOrEmpty(secretariaExistente.UserId))
-                throw new InvalidOperationException("El DNI ya está vinculado a una cuenta de usuario");
+                throw new InvalidOperationException("No se pudo completar el registro. Verifique los datos ingresados.");
 
             await using var transaction = await _dbContext.Database.BeginTransactionAsync();
             try
