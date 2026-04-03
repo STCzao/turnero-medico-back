@@ -135,7 +135,11 @@ namespace turnero_medico_backend.Services
 
             if (userRole == "Paciente")
             {
-                var paciente = await _pacienteRepository.GetByIdAsync(turno.PacienteId)
+                // IgnoreQueryFilters para no romper el chequeo si el paciente está soft-deleted
+                // pero aún tiene un JWT válido en circulación.
+                var paciente = await _dbContext.Pacientes
+                    .IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(p => p.Id == turno.PacienteId)
                     ?? throw new InvalidOperationException("El paciente del turno no existe.");
 
                 if (paciente.UserId != userId && paciente.ResponsableId != userId)

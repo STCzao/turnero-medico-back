@@ -1,4 +1,5 @@
 using AutoMapper;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using turnero_medico_backend.Data;
 using turnero_medico_backend.DTOs.Common;
@@ -15,7 +16,8 @@ namespace turnero_medico_backend.Services
         ApplicationDbContext dbContext,
         IMapper mapper,
         ICurrentUserService currentUserService,
-        IAuditService auditService
+        IAuditService auditService,
+        UserManager<ApplicationUser> userManager
     ) : IPacienteService
     {
         private readonly IPacienteRepository _pacienteRepository = pacienteRepository;
@@ -23,6 +25,7 @@ namespace turnero_medico_backend.Services
         private readonly IMapper _mapper = mapper;
         private readonly ICurrentUserService _currentUserService = currentUserService;
         private readonly IAuditService _auditService = auditService;
+        private readonly UserManager<ApplicationUser> _userManager = userManager;
 
         public async Task<PagedResultDto<PacienteReadDto>> GetAllPagedAsync(int page, int pageSize)
         {
@@ -145,8 +148,18 @@ namespace turnero_medico_backend.Services
 
             paciente.IsDeleted = true;
             paciente.DeletedAt = DateTime.UtcNow;
-
             await _pacienteRepository.UpdateAsync(paciente);
+
+            if (!string.IsNullOrEmpty(paciente.UserId))
+            {
+                var user = await _userManager.FindByIdAsync(paciente.UserId);
+                if (user != null)
+                {
+                    await _userManager.SetLockoutEnabledAsync(user, true);
+                    await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue);
+                }
+            }
+
             await _auditService.LogAsync(AuditAccion.Eliminar, "Paciente", id.ToString());
             return true;
         }
@@ -162,6 +175,14 @@ namespace turnero_medico_backend.Services
             paciente.IsDeleted = false;
             paciente.DeletedAt = null;
             await _pacienteRepository.UpdateAsync(paciente);
+
+            if (!string.IsNullOrEmpty(paciente.UserId))
+            {
+                var user = await _userManager.FindByIdAsync(paciente.UserId);
+                if (user != null)
+                    await _userManager.SetLockoutEndDateAsync(user, null);
+            }
+
             await _auditService.LogAsync(AuditAccion.Actualizar, "Paciente", id.ToString());
             return _mapper.Map<PacienteReadDto>(paciente);
         }
