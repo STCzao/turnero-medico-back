@@ -16,9 +16,6 @@ namespace turnero_medico_backend.Services
         private readonly IRepository<Doctor> _doctorRepository = doctorRepository;
         private readonly IAuditService _auditService = auditService;
 
-        private static readonly string[] DiasNombre =
-            ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-
         public async Task<IEnumerable<HorarioReadDto>> GetByDoctorAsync(int doctorId)
         {
             var horarios = await _dbContext.Horarios
@@ -34,7 +31,7 @@ namespace turnero_medico_backend.Services
                 DoctorId = h.DoctorId,
                 DoctorNombre = h.Doctor != null ? $"{h.Doctor.Nombre} {h.Doctor.Apellido}" : "Sin asignar",
                 DiaSemana = h.DiaSemana,
-                DiaSemanaTexto = DiasNombre[h.DiaSemana],
+                DiaSemanaTexto = DiaSemanaHelper.ToString(h.DiaSemana),
                 HoraInicio = h.HoraInicio,
                 HoraFin = h.HoraFin,
                 DuracionMinutos = h.DuracionMinutos
@@ -58,7 +55,7 @@ namespace turnero_medico_backend.Services
 
             if (superpuesto)
                 throw new InvalidOperationException(
-                    $"El doctor ya tiene un horario que se superpone en {DiasNombre[dto.DiaSemana]} entre {dto.HoraInicio} y {dto.HoraFin}.");
+                    $"El doctor ya tiene un horario que se superpone en {DiaSemanaHelper.ToString(dto.DiaSemana)} entre {dto.HoraInicio} y {dto.HoraFin}.");
 
             var horario = new Horario
             {
@@ -79,7 +76,7 @@ namespace turnero_medico_backend.Services
                 DoctorId = horario.DoctorId,
                 DoctorNombre = $"{doctor.Nombre} {doctor.Apellido}",
                 DiaSemana = horario.DiaSemana,
-                DiaSemanaTexto = DiasNombre[horario.DiaSemana],
+                DiaSemanaTexto = DiaSemanaHelper.ToString(horario.DiaSemana),
                 HoraInicio = horario.HoraInicio,
                 HoraFin = horario.HoraFin,
                 DuracionMinutos = horario.DuracionMinutos

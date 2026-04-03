@@ -26,8 +26,6 @@ namespace turnero_medico_backend.Controllers
         [Authorize(Roles = "Admin,Secretaria")]
         public async Task<ActionResult<HorarioReadDto>> Create(HorarioCreateDto dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
 
             var horario = await _service.CreateAsync(dto);
             return CreatedAtAction(nameof(GetByDoctor), new { doctorId = horario.DoctorId }, horario);

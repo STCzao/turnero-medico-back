@@ -22,10 +22,8 @@ namespace turnero_medico_backend.Controllers
         [EnableRateLimiting("register")]
         public async Task<IActionResult> RegisterPaciente([FromBody] RegisterPacienteDto request)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
 
-            var (success, message) = await _authService.RegisterPacienteAsync(
+            var message = await _authService.RegisterPacienteAsync(
                 request.Email,
                 request.Password,
                 request.Nombre,
@@ -34,9 +32,6 @@ namespace turnero_medico_backend.Controllers
                 request.Telefono,
                 request.FechaNacimiento
             );
-
-            if (!success)
-                return BadRequest(new { message });
 
             return Ok(new { message });
         }
@@ -48,10 +43,8 @@ namespace turnero_medico_backend.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> RegisterDoctor([FromBody] RegisterDoctorDto request)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
 
-            var (success, message) = await _authService.RegisterDoctorAsync(
+            var message = await _authService.RegisterDoctorAsync(
                 request.Email,
                 request.Password,
                 request.Nombre,
@@ -62,9 +55,6 @@ namespace turnero_medico_backend.Controllers
                 request.Dni
             );
 
-            if (!success)
-                return BadRequest(new { message });
-
             return Ok(new { message });
         }
 
@@ -73,19 +63,15 @@ namespace turnero_medico_backend.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> RegisterSecretaria([FromBody] RegisterSecretariaDto request)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
 
-            var (success, message) = await _authService.RegisterSecretariaAsync(
+            var message = await _authService.RegisterSecretariaAsync(
                 request.Email,
                 request.Password,
                 request.Nombre,
                 request.Apellido,
-                request.Dni
+                request.Dni,
+                request.Telefono
             );
-
-            if (!success)
-                return BadRequest(new { message });
 
             return Ok(new { message });
         }
@@ -95,8 +81,6 @@ namespace turnero_medico_backend.Controllers
         [EnableRateLimiting("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequestDto request)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
 
             var (success, token, refreshToken, message) = await _authService.LoginAsync(request.Email, request.Password);
 
@@ -111,8 +95,6 @@ namespace turnero_medico_backend.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequestDto request)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
 
             var (success, token, refreshToken, message) =
                 await _authService.RefreshTokenAsync(request.UserId, request.RefreshToken);

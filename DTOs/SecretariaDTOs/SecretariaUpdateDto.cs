@@ -19,7 +19,7 @@ public class SecretariaUpdateDto
 
     [Required(ErrorMessage = "El email es obligatorio")]
     [EmailAddress(ErrorMessage = "El email no tiene un formato válido")]
-    [StringLength(100, ErrorMessage = "El email no puede exceder 100 caracteres")]
+    [StringLength(256, ErrorMessage = "El email no puede exceder 256 caracteres")]
     public string Email { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "El teléfono es obligatorio")]

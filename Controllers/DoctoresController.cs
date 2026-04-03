@@ -70,8 +70,6 @@ namespace turnero_medico_backend.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<DoctorReadDto>> Create(DoctorCreateDto dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
 
             var doctor = await _service.CreateAsync(dto);
             return CreatedAtAction(nameof(GetById), new { id = doctor.Id }, doctor);
@@ -82,8 +80,6 @@ namespace turnero_medico_backend.Controllers
         [Authorize(Roles = "Admin,Doctor")]
         public async Task<ActionResult<DoctorReadDto>> Update(int id, DoctorUpdateDto dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
 
             if (id != dto.Id)
                 return BadRequest(new { mensaje = "El ID de la URL no coincide con el ID del DTO" });

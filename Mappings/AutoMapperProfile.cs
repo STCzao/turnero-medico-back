@@ -4,8 +4,10 @@ using turnero_medico_backend.DTOs.EspecialidadDTOs;
 using turnero_medico_backend.DTOs.HorarioDTOs;
 using turnero_medico_backend.DTOs.ObraSocialDTOs;
 using turnero_medico_backend.DTOs.PacienteDTOs;
+using turnero_medico_backend.DTOs.SecretariaDTOs;
 using turnero_medico_backend.DTOs.TurnoDTOs;
 using turnero_medico_backend.Models.Entities;
+using turnero_medico_backend.Services;
 
 namespace turnero_medico_backend.Mappings
 {
@@ -20,6 +22,13 @@ namespace turnero_medico_backend.Mappings
 
             // ObraSocial mappings
             CreateMap<ObraSocial, ObraSocialReadDto>();
+
+            // Secretaria mappings
+            CreateMap<Secretaria, SecretariaReadDto>()
+                .ForMember(dest => dest.TieneCuenta,
+                    opt => opt.MapFrom(src => !string.IsNullOrEmpty(src.UserId)));
+            CreateMap<SecretariaCreateDto, Secretaria>();
+            CreateMap<SecretariaUpdateDto, Secretaria>();
 
             // Paciente mappings
             CreateMap<Paciente, PacienteReadDto>()
@@ -68,21 +77,9 @@ namespace turnero_medico_backend.Mappings
                 .ForMember(dest => dest.DoctorNombre,
                     opt => opt.MapFrom(src => src.Doctor != null ? $"{src.Doctor.Nombre} {src.Doctor.Apellido}" : "Sin asignar"))
                 .ForMember(dest => dest.DiaSemanaTexto,
-                    opt => opt.MapFrom(src => DiaSemanaToString(src.DiaSemana)));
+                    opt => opt.MapFrom(src => DiaSemanaHelper.ToString(src.DiaSemana)));
 
             CreateMap<HorarioCreateDto, Horario>();
         }
-
-        private static string DiaSemanaToString(int dia) => dia switch
-        {
-            0 => "Domingo",
-            1 => "Lunes",
-            2 => "Martes",
-            3 => "Miércoles",
-            4 => "Jueves",
-            5 => "Viernes",
-            6 => "Sábado",
-            _ => "Desconocido"
-        };
     }
 }
