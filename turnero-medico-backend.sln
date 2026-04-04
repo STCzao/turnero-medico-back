@@ -4,7 +4,7 @@ VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "turnero-medico-backend", "turnero-medico-backend.csproj", "{A6EE5876-A04F-F241-6310-3024320B9CF9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "turnero-medico-backend.Tests", "..\turnero-medico-backend.Tests\turnero-medico-backend.Tests.csproj", "{943837A0-46DF-45A4-AE26-1ED7644323DE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "turnero-medico-backend.Tests", "Tests\turnero-medico-backend.Tests\turnero-medico-backend.Tests.csproj", "{943837A0-46DF-45A4-AE26-1ED7644323DE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

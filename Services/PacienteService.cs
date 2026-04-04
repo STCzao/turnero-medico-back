@@ -124,11 +124,7 @@ namespace turnero_medico_backend.Services
             _mapper.Map(dto, paciente);
             paciente.FechaNacimiento = DateTime.SpecifyKind(paciente.FechaNacimiento, DateTimeKind.Utc);
 
-            // Recalcular EsMayorDeEdad en base a FechaNacimiento actualizada
-            var hoy = DateTime.UtcNow;
-            var edad = hoy.Year - paciente.FechaNacimiento.Year;
-            if (paciente.FechaNacimiento > hoy.AddYears(-edad)) edad--;
-            paciente.EsMayorDeEdad = edad >= 18;
+            paciente.EsMayorDeEdad = EdadHelper.EsMayorDeEdad(paciente.FechaNacimiento);
 
             await _pacienteRepository.UpdateAsync(paciente);
             await _auditService.LogAsync(AuditAccion.Actualizar, "Paciente", id.ToString(),
@@ -222,8 +218,6 @@ namespace turnero_medico_backend.Services
                     "Los pacientes dependientes no pueden registrar sus propios dependientes.");
 
             var fechaNacimientoUtc = DateTime.SpecifyKind(dto.FechaNacimiento, DateTimeKind.Utc);
-            var edad = DateTime.UtcNow.Year - fechaNacimientoUtc.Year;
-            if (fechaNacimientoUtc > DateTime.UtcNow.AddYears(-edad)) edad--;
 
             var dependiente = new Paciente
             {
@@ -233,7 +227,7 @@ namespace turnero_medico_backend.Services
                 FechaNacimiento = fechaNacimientoUtc,
                 Telefono = dto.Telefono ?? string.Empty,
                 ResponsableId = userId,
-                EsMayorDeEdad = edad >= 18,
+                EsMayorDeEdad = EdadHelper.EsMayorDeEdad(fechaNacimientoUtc),
                 UserId = null  // Los dependientes no tienen cuenta de usuario
             };
 
@@ -259,11 +253,7 @@ namespace turnero_medico_backend.Services
             dependiente.FechaNacimiento = DateTime.SpecifyKind(dto.FechaNacimiento, DateTimeKind.Utc);
             dependiente.Telefono = dto.Telefono ?? string.Empty;
 
-            // Recalcular mayoría de edad por si cambió la fecha
-            var hoy = DateTime.UtcNow;
-            var edad = hoy.Year - dependiente.FechaNacimiento.Year;
-            if (dependiente.FechaNacimiento > hoy.AddYears(-edad)) edad--;
-            dependiente.EsMayorDeEdad = edad >= 18;
+            dependiente.EsMayorDeEdad = EdadHelper.EsMayorDeEdad(dependiente.FechaNacimiento);
 
             await _pacienteRepository.UpdateAsync(dependiente);
             await _auditService.LogAsync(AuditAccion.Actualizar, "Dependiente", id.ToString());

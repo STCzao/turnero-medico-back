@@ -234,6 +234,10 @@ namespace turnero_medico_backend.Services
                 throw new InvalidOperationException(
                     $"Estado '{dto.Estado}' no es válido. Solo se permite: {string.Join(", ", estadosPermitidosPatch)}.");
 
+            // Validar transición vía máquina de estados
+            if (!string.IsNullOrEmpty(dto.Estado))
+                EstadoTurno.ValidarTransicion(turno.Estado, dto.Estado);
+
             if (userRole == "Admin")
             {
                 if (!string.IsNullOrEmpty(dto.Estado))
@@ -257,10 +261,6 @@ namespace turnero_medico_backend.Services
             var doctorDelTurno = await _doctorRepository.GetByIdAsync(turno.DoctorId.Value);
             if (doctorDelTurno?.UserId != userId)
                 throw new UnauthorizedAccessException("No tienes permisos para modificar este turno.");
-
-            if (turno.Estado != EstadoTurno.Confirmado)
-                throw new InvalidOperationException(
-                    $"Solo puedes actualizar turnos confirmados. Estado actual: '{turno.Estado}'.");
 
             if (!string.IsNullOrEmpty(dto.Estado))
                 turno.Estado = dto.Estado;
@@ -288,9 +288,7 @@ namespace turnero_medico_backend.Services
                 if (userRole != "Secretaria" && userRole != "Admin")
                     throw new UnauthorizedAccessException("Solo la secretaria o el administrador pueden confirmar turnos.");
 
-                if (turno.Estado != EstadoTurno.SolicitudPendiente)
-                    throw new InvalidOperationException(
-                        $"Solo se pueden confirmar solicitudes pendientes. Estado actual: '{turno.Estado}'.");
+                EstadoTurno.ValidarTransicion(turno.Estado, EstadoTurno.Confirmado);
 
                 var doctorId = dto.DoctorId ?? turno.DoctorId
                     ?? throw new InvalidOperationException(
@@ -323,6 +321,13 @@ namespace turnero_medico_backend.Services
                     horaDelTurno < h.HoraFin)
                     ?? throw new InvalidOperationException(
                         $"El doctor no tiene horario de atención configurado para el {dto.FechaHora:dddd} a las {dto.FechaHora:HH:mm}.");
+
+                // Validar que la hora caiga en un slot válido (alineada a la grilla de DuracionMinutos)
+                var minutosDesdeInicio = (horaDelTurno - horario.HoraInicio).TotalMinutes;
+                if (minutosDesdeInicio % horario.DuracionMinutos != 0)
+                    throw new InvalidOperationException(
+                        $"La hora {dto.FechaHora:HH:mm} no coincide con un slot válido. " +
+                        $"Los turnos comienzan cada {horario.DuracionMinutos} minutos desde las {horario.HoraInicio}.");
 
                 // Verificar conflictos usando rango de tiempo (no solo igualdad exacta).
                 // Dos turnos se superponen si sus intervalos [FechaHora, FechaHora+duracion) se tocan.
@@ -377,9 +382,7 @@ namespace turnero_medico_backend.Services
             if (userRole != "Secretaria" && userRole != "Admin")
                 throw new UnauthorizedAccessException("Solo la secretaria o el administrador pueden rechazar turnos.");
 
-            if (turno.Estado != EstadoTurno.SolicitudPendiente)
-                throw new InvalidOperationException(
-                    $"Solo se pueden rechazar solicitudes pendientes. Estado actual: '{turno.Estado}'.");
+            EstadoTurno.ValidarTransicion(turno.Estado, EstadoTurno.Rechazado);
 
             var userId = _currentUserService.GetUserId();
 
@@ -406,10 +409,7 @@ namespace turnero_medico_backend.Services
             var userRole = _currentUserService.GetUserRole();
             var userId = _currentUserService.GetUserId();
 
-            var estadosCancelables = new[] { EstadoTurno.SolicitudPendiente, EstadoTurno.Confirmado };
-            if (!estadosCancelables.Contains(turno.Estado))
-                throw new InvalidOperationException(
-                    $"No se puede cancelar un turno en estado '{turno.Estado}'.");
+            EstadoTurno.ValidarTransicion(turno.Estado, EstadoTurno.Cancelado);
 
             if (userRole == "Admin" || userRole == "Secretaria")
             {

@@ -22,7 +22,9 @@
       "Bash(dotnet tool:*)",
       "Bash(where dotnet-ef:*)",
       "Bash(\"D:\\\\Aplicaciones\\\\Drivers\\\\dotnet\\\\dotnet.exe\" ef:*)",
-      "Bash(\"D:\\\\Aplicaciones\\\\Drivers\\\\dotnet\\\\dotnet.exe\" tool:*)"
+      "Bash(\"D:\\\\Aplicaciones\\\\Drivers\\\\dotnet\\\\dotnet.exe\" tool:*)",
+      "Bash(dotnet list:*)",
+      "Bash(dotnet test:*)"
     ]
   }
 }

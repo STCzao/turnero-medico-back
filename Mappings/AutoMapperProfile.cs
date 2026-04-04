@@ -32,6 +32,8 @@ namespace turnero_medico_backend.Mappings
 
             // Paciente mappings
             CreateMap<Paciente, PacienteReadDto>()
+                .ForMember(dest => dest.EsMayorDeEdad,
+                    opt => opt.MapFrom(src => EdadHelper.EsMayorDeEdad(src.FechaNacimiento)))
                 .ReverseMap();
 
             CreateMap<PacienteCreateDto, Paciente>();

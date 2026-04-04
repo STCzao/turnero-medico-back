@@ -165,6 +165,13 @@ namespace turnero_medico_backend.Data
             modelBuilder.Entity<Horario>()
                 .HasIndex(h => new { h.DoctorId, h.DiaSemana });
 
+            // Previene la doble reserva a nivel de base de datos.
+            // Dos turnos confirmados no pueden compartir el mismo doctor + fecha/hora.
+            modelBuilder.Entity<Turno>()
+                .HasIndex(t => new { t.DoctorId, t.FechaHora })
+                .HasFilter("\"Estado\" = 'Confirmado' AND \"DoctorId\" IS NOT NULL AND \"FechaHora\" IS NOT NULL")
+                .IsUnique();
+
             // Soft Delete: filtros globales — excluyen registros borrados lógicamente
             modelBuilder.Entity<Doctor>().HasQueryFilter(d => !d.IsDeleted);
             modelBuilder.Entity<Paciente>().HasQueryFilter(p => !p.IsDeleted);
