@@ -373,6 +373,84 @@ namespace turnero_medico_backend.Tests.Services
                 () => _sut.CancelarAsync(1, new CancelarTurnoDto { Motivo = "Motivo" }));
         }
 
+        [Fact]
+        public async Task CancelarAsync_DoctorCancelaConfirmado_CambiaEstado()
+        {
+            SetupCurrentUser("Doctor", "user-doctor");
+
+            var turno = CrearTurnoBase(estado: EstadoTurno.Confirmado);
+            _turnoRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(turno);
+            _doctorRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(turno.Doctor!);
+
+            var turnoCancelado = CrearTurnoBase(estado: EstadoTurno.Cancelado);
+            _turnoRepoMock.Setup(r => r.GetByIdWithDetailsAsync(1)).ReturnsAsync(turnoCancelado);
+
+            var result = await _sut.CancelarAsync(1, new CancelarTurnoDto { Motivo = "Motivo doctor" });
+
+            Assert.Equal(EstadoTurno.Cancelado, result.Estado);
+        }
+
+        [Fact]
+        public async Task CancelarAsync_DoctorIntentaCancelarPendiente_LanzaInvalidOperation()
+        {
+            SetupCurrentUser("Doctor", "user-doctor");
+
+            // Doctor solo puede cancelar Confirmados — SolicitudPendiente no tiene doctor asignado todavía
+            var turno = CrearTurnoBase(estado: EstadoTurno.SolicitudPendiente);
+            _turnoRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(turno);
+            _doctorRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(turno.Doctor!);
+
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () => _sut.CancelarAsync(1, new CancelarTurnoDto { Motivo = "Motivo" }));
+        }
+
+        [Fact]
+        public async Task CancelarAsync_DoctorAjenoAlTurno_LanzaUnauthorized()
+        {
+            SetupCurrentUser("Doctor", "user-otro-doctor");
+
+            var turno = CrearTurnoBase(estado: EstadoTurno.Confirmado);
+            _turnoRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(turno);
+            _doctorRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(turno.Doctor!);
+
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(
+                () => _sut.CancelarAsync(1, new CancelarTurnoDto { Motivo = "Motivo" }));
+        }
+
+        [Fact]
+        public async Task CancelarAsync_PacienteCancelaPropio_CambiaEstado()
+        {
+            SetupCurrentUser("Paciente", "user-paciente");
+
+            var turno = CrearTurnoBase(estado: EstadoTurno.SolicitudPendiente);
+            _turnoRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(turno);
+
+            _dbContext.Pacientes.Add(turno.Paciente!);
+            await _dbContext.SaveChangesAsync();
+
+            var turnoCancelado = CrearTurnoBase(estado: EstadoTurno.Cancelado);
+            _turnoRepoMock.Setup(r => r.GetByIdWithDetailsAsync(1)).ReturnsAsync(turnoCancelado);
+
+            var result = await _sut.CancelarAsync(1, new CancelarTurnoDto { Motivo = "No puedo ir" });
+
+            Assert.Equal(EstadoTurno.Cancelado, result.Estado);
+        }
+
+        [Fact]
+        public async Task CancelarAsync_PacienteAjenoAlTurno_LanzaUnauthorized()
+        {
+            SetupCurrentUser("Paciente", "user-otro-paciente");
+
+            var turno = CrearTurnoBase(estado: EstadoTurno.SolicitudPendiente);
+            _turnoRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(turno);
+
+            _dbContext.Pacientes.Add(turno.Paciente!);
+            await _dbContext.SaveChangesAsync();
+
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(
+                () => _sut.CancelarAsync(1, new CancelarTurnoDto { Motivo = "Motivo" }));
+        }
+
         // ── UPDATE (Doctor: Completado/Ausente) ─────────────────
 
         [Fact]

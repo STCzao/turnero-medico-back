@@ -145,12 +145,23 @@ namespace turnero_medico_backend.Services
             if (tieneTurnosActivos)
                 throw new InvalidOperationException("No se puede eliminar un paciente con turnos activos.");
 
-            paciente.IsDeleted = true;
-            paciente.DeletedAt = DateTime.UtcNow;
-            await _pacienteRepository.UpdateAsync(paciente);
+            await using var transaction = await _dbContext.Database.BeginTransactionAsync();
+            try
+            {
+                paciente.IsDeleted = true;
+                paciente.DeletedAt = DateTime.UtcNow;
+                await _pacienteRepository.UpdateAsync(paciente);
 
-            if (!string.IsNullOrEmpty(paciente.UserId))
-                await UserLockoutHelper.LockUserAsync(_userManager, paciente.UserId);
+                if (!string.IsNullOrEmpty(paciente.UserId))
+                    await UserLockoutHelper.LockUserAsync(_userManager, paciente.UserId);
+
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
 
             await _auditService.LogAsync(AuditAccion.Eliminar, "Paciente", id.ToString(),
                 AuditSnapshot.ToJson(new { paciente.Nombre, paciente.Apellido, paciente.Dni, paciente.Email }));
@@ -165,12 +176,23 @@ namespace turnero_medico_backend.Services
             if (!paciente.IsDeleted)
                 throw new InvalidOperationException("El paciente ya se encuentra activo.");
 
-            paciente.IsDeleted = false;
-            paciente.DeletedAt = null;
-            await _pacienteRepository.UpdateAsync(paciente);
+            await using var transaction = await _dbContext.Database.BeginTransactionAsync();
+            try
+            {
+                paciente.IsDeleted = false;
+                paciente.DeletedAt = null;
+                await _pacienteRepository.UpdateAsync(paciente);
 
-            if (!string.IsNullOrEmpty(paciente.UserId))
-                await UserLockoutHelper.UnlockUserAsync(_userManager, paciente.UserId);
+                if (!string.IsNullOrEmpty(paciente.UserId))
+                    await UserLockoutHelper.UnlockUserAsync(_userManager, paciente.UserId);
+
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
 
             await _auditService.LogAsync(AuditAccion.Actualizar, "Paciente", id.ToString());
             return _mapper.Map<PacienteReadDto>(paciente);

@@ -412,14 +412,7 @@ namespace turnero_medico_backend.Services
             EstadoTurno.ValidarTransicion(turno.Estado, EstadoTurno.Cancelado);
 
             if (userRole == "Admin" || userRole == "Secretaria")
-            {
-                turno.Estado = EstadoTurno.Cancelado;
-                turno.MotivoCancelacion = dto.Motivo;
-                await _turnoRepository.UpdateAsync(turno);
-                await _auditService.LogAsync(AuditAccion.Cancelar, "Turno", turnoId.ToString());
-                var canceladoAdmin = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
-                return FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(canceladoAdmin!));
-            }
+                return await EjecutarCancelacionAsync(turno, dto.Motivo);
 
             if (userRole == "Doctor")
             {
@@ -433,12 +426,7 @@ namespace turnero_medico_backend.Services
                 if (turno.Estado != EstadoTurno.Confirmado)
                     throw new InvalidOperationException("El doctor solo puede cancelar turnos confirmados.");
 
-                turno.Estado = EstadoTurno.Cancelado;
-                turno.MotivoCancelacion = dto.Motivo;
-                await _turnoRepository.UpdateAsync(turno);
-                await _auditService.LogAsync(AuditAccion.Cancelar, "Turno", turnoId.ToString());
-                var canceladoDoctor = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
-                return FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(canceladoDoctor!));
+                return await EjecutarCancelacionAsync(turno, dto.Motivo);
             }
 
             if (userRole == "Paciente")
@@ -452,15 +440,20 @@ namespace turnero_medico_backend.Services
                 if (paciente.UserId != userId && paciente.ResponsableId != userId)
                     throw new UnauthorizedAccessException("No tienes permisos para cancelar este turno.");
 
-                turno.Estado = EstadoTurno.Cancelado;
-                turno.MotivoCancelacion = dto.Motivo;
-                await _turnoRepository.UpdateAsync(turno);
-                await _auditService.LogAsync(AuditAccion.Cancelar, "Turno", turnoId.ToString());
-                var canceladoPaciente = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
-                return FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(canceladoPaciente!));
+                return await EjecutarCancelacionAsync(turno, dto.Motivo);
             }
 
             throw new UnauthorizedAccessException("No tienes permisos para cancelar este turno.");
+        }
+
+        private async Task<TurnoReadDto> EjecutarCancelacionAsync(Turno turno, string? motivo)
+        {
+            turno.Estado = EstadoTurno.Cancelado;
+            turno.MotivoCancelacion = motivo;
+            await _turnoRepository.UpdateAsync(turno);
+            await _auditService.LogAsync(AuditAccion.Cancelar, "Turno", turno.Id.ToString());
+            var cancelado = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
+            return FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(cancelado!));
         }
 
         // ─────────────────────────────────────────────────────────────
