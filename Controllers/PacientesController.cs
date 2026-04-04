@@ -53,8 +53,6 @@ namespace turnero_medico_backend.Controllers
         [Authorize(Roles = "Admin,Secretaria")]
         public async Task<ActionResult<PacienteReadDto>> Create(PacienteCreateDto dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
 
             var paciente = await _service.CreateAsync(dto);
             return CreatedAtAction(nameof(GetById), new { id = paciente.Id }, paciente);
@@ -65,8 +63,6 @@ namespace turnero_medico_backend.Controllers
         [Authorize(Roles = "Admin,Secretaria,Paciente")]
         public async Task<ActionResult<PacienteReadDto>> Update(int id, PacienteUpdateDto dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
 
             if (id != dto.Id)
                 return BadRequest(new { mensaje = "El ID de la URL no coincide con el ID del DTO" });
@@ -106,8 +102,6 @@ namespace turnero_medico_backend.Controllers
         [Authorize(Roles = "Paciente,Admin,Secretaria")]
         public async Task<ActionResult<PacienteReadDto>> CreateDependiente(DependienteCreateDto dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
 
             var dependiente = await _service.CreateDependienteAsync(dto);
             return CreatedAtAction(nameof(GetById), new { id = dependiente.Id }, dependiente);
@@ -117,8 +111,6 @@ namespace turnero_medico_backend.Controllers
         [Authorize(Roles = "Paciente,Admin,Secretaria")]
         public async Task<ActionResult<PacienteReadDto>> UpdateDependiente(int id, DependienteUpdateDto dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
 
             if (id != dto.Id)
                 return BadRequest(new { mensaje = "El ID de la URL no coincide con el ID del DTO" });

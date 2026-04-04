@@ -116,6 +116,8 @@ namespace turnero_medico_backend.Services
             var paciente = await _pacienteRepository.GetByIdAsync(id)
                 ?? throw new KeyNotFoundException($"Paciente con ID {id} no encontrado.");
 
+            var valoresAnteriores = AuditSnapshot.ToJson(new { paciente.Nombre, paciente.Apellido, paciente.Email, paciente.Telefono, paciente.FechaNacimiento });
+
             if (userRole == "Paciente" && paciente.UserId != userId)
                 throw new UnauthorizedAccessException("No tienes permisos para modificar este paciente.");
 
@@ -129,7 +131,8 @@ namespace turnero_medico_backend.Services
             paciente.EsMayorDeEdad = edad >= 18;
 
             await _pacienteRepository.UpdateAsync(paciente);
-            await _auditService.LogAsync(AuditAccion.Actualizar, "Paciente", id.ToString());
+            await _auditService.LogAsync(AuditAccion.Actualizar, "Paciente", id.ToString(),
+                valoresAnteriores, AuditSnapshot.ToJson(new { paciente.Nombre, paciente.Apellido, paciente.Email, paciente.Telefono, paciente.FechaNacimiento }));
             return _mapper.Map<PacienteReadDto>(paciente);
         }
 
@@ -151,16 +154,10 @@ namespace turnero_medico_backend.Services
             await _pacienteRepository.UpdateAsync(paciente);
 
             if (!string.IsNullOrEmpty(paciente.UserId))
-            {
-                var user = await _userManager.FindByIdAsync(paciente.UserId);
-                if (user != null)
-                {
-                    await _userManager.SetLockoutEnabledAsync(user, true);
-                    await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue);
-                }
-            }
+                await UserLockoutHelper.LockUserAsync(_userManager, paciente.UserId);
 
-            await _auditService.LogAsync(AuditAccion.Eliminar, "Paciente", id.ToString());
+            await _auditService.LogAsync(AuditAccion.Eliminar, "Paciente", id.ToString(),
+                AuditSnapshot.ToJson(new { paciente.Nombre, paciente.Apellido, paciente.Dni, paciente.Email }));
             return true;
         }
 
@@ -177,11 +174,7 @@ namespace turnero_medico_backend.Services
             await _pacienteRepository.UpdateAsync(paciente);
 
             if (!string.IsNullOrEmpty(paciente.UserId))
-            {
-                var user = await _userManager.FindByIdAsync(paciente.UserId);
-                if (user != null)
-                    await _userManager.SetLockoutEndDateAsync(user, null);
-            }
+                await UserLockoutHelper.UnlockUserAsync(_userManager, paciente.UserId);
 
             await _auditService.LogAsync(AuditAccion.Actualizar, "Paciente", id.ToString());
             return _mapper.Map<PacienteReadDto>(paciente);
@@ -228,15 +221,19 @@ namespace turnero_medico_backend.Services
                 throw new InvalidOperationException(
                     "Los pacientes dependientes no pueden registrar sus propios dependientes.");
 
+            var fechaNacimientoUtc = DateTime.SpecifyKind(dto.FechaNacimiento, DateTimeKind.Utc);
+            var edad = DateTime.UtcNow.Year - fechaNacimientoUtc.Year;
+            if (fechaNacimientoUtc > DateTime.UtcNow.AddYears(-edad)) edad--;
+
             var dependiente = new Paciente
             {
                 Dni = dto.Dni,
                 Nombre = dto.Nombre,
                 Apellido = dto.Apellido,
-                FechaNacimiento = DateTime.SpecifyKind(dto.FechaNacimiento, DateTimeKind.Utc),
+                FechaNacimiento = fechaNacimientoUtc,
                 Telefono = dto.Telefono ?? string.Empty,
                 ResponsableId = userId,
-                EsMayorDeEdad = false,
+                EsMayorDeEdad = edad >= 18,
                 UserId = null  // Los dependientes no tienen cuenta de usuario
             };
 

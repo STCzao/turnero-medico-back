@@ -50,8 +50,6 @@ public class SecretariasController(ISecretariaService _service) : ControllerBase
     [HttpPost]
     public async Task<ActionResult<SecretariaReadDto>> Create(SecretariaCreateDto dto)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
 
         var secretaria = await _service.CreateAsync(dto);
         return CreatedAtAction(nameof(GetById), new { id = secretaria.Id }, secretaria);
@@ -60,8 +58,6 @@ public class SecretariasController(ISecretariaService _service) : ControllerBase
     [HttpPut("{id}")]
     public async Task<ActionResult<SecretariaReadDto>> Update(int id, SecretariaUpdateDto dto)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
 
         if (id != dto.Id)
             return BadRequest(new { mensaje = "El ID de la URL no coincide con el ID del DTO" });

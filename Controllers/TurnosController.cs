@@ -71,8 +71,6 @@ namespace turnero_medico_backend.Controllers
         [Authorize(Roles = "Paciente,Secretaria,Admin")]
         public async Task<ActionResult<TurnoReadDto>> Create(TurnoCreateDto dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
 
             var turno = await _service.CreateAsync(dto);
             return CreatedAtAction(nameof(GetById), new { id = turno.Id }, turno);
@@ -83,8 +81,6 @@ namespace turnero_medico_backend.Controllers
         [Authorize(Roles = "Secretaria,Admin")]
         public async Task<ActionResult<TurnoReadDto>> Confirmar(int id, ConfirmarTurnoDto dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
 
             var turno = await _service.ConfirmarAsync(id, dto);
             return Ok(turno);
@@ -95,8 +91,6 @@ namespace turnero_medico_backend.Controllers
         [Authorize(Roles = "Secretaria,Admin")]
         public async Task<ActionResult<TurnoReadDto>> Rechazar(int id, RechazarTurnoDto dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
 
             var turno = await _service.RechazarAsync(id, dto);
             return Ok(turno);
@@ -107,8 +101,6 @@ namespace turnero_medico_backend.Controllers
         [Authorize(Roles = "Paciente,Doctor,Secretaria,Admin")]
         public async Task<ActionResult<TurnoReadDto>> Cancelar(int id, CancelarTurnoDto dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
 
             var turno = await _service.CancelarAsync(id, dto);
             return Ok(turno);
@@ -119,8 +111,6 @@ namespace turnero_medico_backend.Controllers
         [Authorize(Roles = "Doctor,Admin")]
         public async Task<ActionResult<TurnoReadDto>> Update(int id, TurnoUpdateDto dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
 
             if (id != dto.Id)
                 return BadRequest(new { mensaje = "El ID de la URL no coincide con el ID del DTO" });
@@ -130,7 +120,7 @@ namespace turnero_medico_backend.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin,Secretaria,Paciente")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult> Delete(int id)
         {
             await _service.DeleteAsync(id);
@@ -171,7 +161,7 @@ namespace turnero_medico_backend.Controllers
 
         // Historial clínico — turnos completados de un paciente
         [HttpGet("paciente/{pacienteId}/historial")]
-        [Authorize(Roles = "Admin,Secretaria,Paciente")]
+        [Authorize(Roles = "Admin,Secretaria,Paciente,Doctor")]
         public async Task<ActionResult<IEnumerable<TurnoReadDto>>> GetHistorial(int pacienteId)
         {
             var turnos = await _service.GetHistorialAsync(pacienteId);

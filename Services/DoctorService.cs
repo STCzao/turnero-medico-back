@@ -86,12 +86,24 @@ namespace turnero_medico_backend.Services
             var doctor = await _repository.GetByIdWithEspecialidadAsync(id)
                 ?? throw new KeyNotFoundException($"Doctor con ID {id} no encontrado.");
 
+            // Un Doctor autenticado solo puede editar su propio perfil
+            var userRole = _currentUserService.GetUserRole();
+            if (userRole == "Doctor")
+            {
+                var userId = _currentUserService.GetUserId();
+                if (doctor.UserId != userId)
+                    throw new UnauthorizedAccessException("No tienes permisos para modificar este doctor.");
+            }
+
+            var valoresAnteriores = AuditSnapshot.ToJson(new { doctor.Nombre, doctor.Apellido, doctor.Email, doctor.Telefono, doctor.EspecialidadId });
+
             _ = await _especialidadRepository.GetByIdAsync(dto.EspecialidadId)
                 ?? throw new InvalidOperationException($"La especialidad con ID {dto.EspecialidadId} no existe.");
 
             _mapper.Map(dto, doctor);
             await _repository.UpdateAsync(doctor);
-            await _auditService.LogAsync(AuditAccion.Actualizar, "Doctor", id.ToString());
+            await _auditService.LogAsync(AuditAccion.Actualizar, "Doctor", id.ToString(),
+                valoresAnteriores, AuditSnapshot.ToJson(new { doctor.Nombre, doctor.Apellido, doctor.Email, doctor.Telefono, doctor.EspecialidadId }));
             var updatedWithNav = await _repository.GetByIdWithEspecialidadAsync(id);
             return _mapper.Map<DoctorReadDto>(updatedWithNav!);
         }
@@ -109,14 +121,7 @@ namespace turnero_medico_backend.Services
                 await _repository.UpdateAsync(doctor);
 
                 if (!string.IsNullOrEmpty(doctor.UserId))
-                {
-                    var user = await _userManager.FindByIdAsync(doctor.UserId);
-                    if (user != null)
-                    {
-                        await _userManager.SetLockoutEnabledAsync(user, true);
-                        await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue);
-                    }
-                }
+                    await UserLockoutHelper.LockUserAsync(_userManager, doctor.UserId);
 
                 await transaction.CommitAsync();
             }
@@ -126,7 +131,8 @@ namespace turnero_medico_backend.Services
                 throw;
             }
 
-            await _auditService.LogAsync(AuditAccion.Eliminar, "Doctor", id.ToString());
+            await _auditService.LogAsync(AuditAccion.Eliminar, "Doctor", id.ToString(),
+                AuditSnapshot.ToJson(new { doctor.Nombre, doctor.Apellido, doctor.Matricula, doctor.Email }));
             return true;
         }
 
@@ -146,11 +152,7 @@ namespace turnero_medico_backend.Services
                 await _repository.UpdateAsync(doctor);
 
                 if (!string.IsNullOrEmpty(doctor.UserId))
-                {
-                    var user = await _userManager.FindByIdAsync(doctor.UserId);
-                    if (user != null)
-                        await _userManager.SetLockoutEndDateAsync(user, null);
-                }
+                    await UserLockoutHelper.UnlockUserAsync(_userManager, doctor.UserId);
 
                 await transaction.CommitAsync();
             }

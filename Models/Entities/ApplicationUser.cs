@@ -12,9 +12,6 @@ namespace turnero_medico_backend.Models.Entities
         // Apellido del usuario
         public string Apellido { get; set; } = string.Empty;
 
-        // DNI del usuario (Secretaria / Admin)
-        public string Dni { get; set; } = string.Empty;
-
         // Relación con Doctor (si es médico)
         public int? DoctorId { get; set; }
 

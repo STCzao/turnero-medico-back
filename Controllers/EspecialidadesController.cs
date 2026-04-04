@@ -36,8 +36,6 @@ namespace turnero_medico_backend.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<EspecialidadReadDto>> Create(EspecialidadCreateDto dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
 
             var especialidad = await _service.CreateAsync(dto);
             return CreatedAtAction(nameof(GetById), new { id = especialidad.Id }, especialidad);
@@ -47,8 +45,6 @@ namespace turnero_medico_backend.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<EspecialidadReadDto>> Update(int id, EspecialidadUpdateDto dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
 
             var especialidad = await _service.UpdateAsync(id, dto);
             if (especialidad == null)

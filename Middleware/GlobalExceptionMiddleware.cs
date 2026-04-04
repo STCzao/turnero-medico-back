@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using turnero_medico_backend.Exceptions;
 
 namespace turnero_medico_backend.Middleware
 {
@@ -34,6 +35,20 @@ namespace turnero_medico_backend.Middleware
             switch (exception)
             {
                 // Excepciones específicas que reconocemos
+                case NotFoundException:
+                    context.Response.StatusCode = StatusCodes.Status404NotFound;
+                    response.StatusCode = HttpStatusCode.NotFound;
+                    response.Message = "Recurso no encontrado";
+                    response.Detail = exception.Message;
+                    break;
+
+                case ConflictException:
+                    context.Response.StatusCode = StatusCodes.Status409Conflict;
+                    response.StatusCode = HttpStatusCode.Conflict;
+                    response.Message = "Conflicto";
+                    response.Detail = exception.Message;
+                    break;
+
                 case DbUpdateConcurrencyException:
                     // Conflicto de concurrencia optimista (RowVersion): otro proceso modificó el registro primero.
                     context.Response.StatusCode = StatusCodes.Status409Conflict;

@@ -9,7 +9,7 @@ namespace turnero_medico_backend.Repositories
     {
         private readonly ApplicationDbContext _ctx = context;
 
-        // Sobreescribe el paginado genérico para ordenar por Apellido en lugar de Id
+        // Sobreescribe el paginado genérico para ordenar por Id
         public override async Task<(IEnumerable<Secretaria> Items, int Total)> GetAllPagedAsync(int page, int pageSize)
         {
             var query = _ctx.Secretarias.AsQueryable();

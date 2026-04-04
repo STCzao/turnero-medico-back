@@ -1,40 +1,14 @@
 using System.ComponentModel.DataAnnotations;
-using turnero_medico_backend.DTOs.Validations;
+using turnero_medico_backend.DTOs.PacienteDTOs;
 
 namespace turnero_medico_backend.DTOs.AuthDTOs
 {
-    public class RegisterPacienteDto
+    // DTO para el auto-registro público de pacientes.
+    // Hereda todas las validaciones de PacienteCreateDto y agrega únicamente Password.
+    public class RegisterPacienteDto : PacienteCreateDto
     {
-        [Required(ErrorMessage = "El email es obligatorio")]
-        [EmailAddress(ErrorMessage = "El email no tiene un formato válido")]
-        [StringLength(256, ErrorMessage = "El email no puede exceder 256 caracteres")]
-        public string Email { get; set; } = string.Empty;
-
         [Required(ErrorMessage = "La contraseña es obligatoria")]
         [StringLength(100, MinimumLength = 8, ErrorMessage = "La contraseña debe tener entre {2} y {1} caracteres")]
         public string Password { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "El nombre es obligatorio")]
-        [StringLength(100, MinimumLength = 2, ErrorMessage = "El nombre debe tener entre {2} y {1} caracteres")]
-        [RegularExpression(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$", ErrorMessage = "El nombre solo puede contener letras y espacios")]
-        public string Nombre { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "El apellido es obligatorio")]
-        [StringLength(100, MinimumLength = 2, ErrorMessage = "El apellido debe tener entre {2} y {1} caracteres")]
-        [RegularExpression(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$", ErrorMessage = "El apellido solo puede contener letras y espacios")]
-        public string Apellido { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "El DNI es obligatorio")]
-        [RegularExpression(@"^\d{7,8}$", ErrorMessage = "El DNI debe tener 7 u 8 dígitos numéricos")]
-        public string Dni { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "El teléfono es obligatorio")]
-        [RegularExpression(@"^[\d\s\-\+\(\)]{8,20}$", ErrorMessage = "El teléfono debe tener entre 8 y 20 caracteres")]
-        public string Telefono { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "La fecha de nacimiento es obligatoria")]
-        [DataType(DataType.Date)]
-        [MinimumAge(18)]
-        public DateTime FechaNacimiento { get; set; }
     }
 }

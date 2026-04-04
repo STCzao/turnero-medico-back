@@ -1,3 +1,4 @@
+using AutoMapper;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using turnero_medico_backend.Data;
@@ -17,13 +18,15 @@ public class SecretariaService(
     UserManager<ApplicationUser> userManager,
     ICurrentUserService currentUserService,
     IAuditService auditService,
-    ApplicationDbContext dbContext) : ISecretariaService
+    ApplicationDbContext dbContext,
+    IMapper mapper) : ISecretariaService
 {
     private readonly ISecretariaRepository _repository = repository;
     private readonly UserManager<ApplicationUser> _userManager = userManager;
     private readonly ICurrentUserService _currentUserService = currentUserService;
     private readonly IAuditService _auditService = auditService;
     private readonly ApplicationDbContext _dbContext = dbContext;
+    private readonly IMapper _mapper = mapper;
 
     public async Task<PagedResultDto<SecretariaReadDto>> GetAllPagedAsync(int page, int pageSize)
     {
@@ -31,7 +34,7 @@ public class SecretariaService(
         var (items, total) = await _repository.GetAllPagedAsync(page, pageSize);
         return new PagedResultDto<SecretariaReadDto>
         {
-            Items = items.Select(ToDto),
+            Items = _mapper.Map<IEnumerable<SecretariaReadDto>>(items),
             Total = total,
             Page = page,
             PageSize = pageSize
@@ -41,7 +44,7 @@ public class SecretariaService(
     public async Task<SecretariaReadDto?> GetByIdAsync(int id)
     {
         var secretaria = await _repository.GetByIdAsync(id);
-        return secretaria == null ? null : ToDto(secretaria);
+        return secretaria == null ? null : _mapper.Map<SecretariaReadDto>(secretaria);
     }
 
     public async Task<SecretariaReadDto?> GetMyProfileAsync()
@@ -51,7 +54,7 @@ public class SecretariaService(
 
         var secretaria = await _dbContext.Secretarias
             .FirstOrDefaultAsync(s => s.UserId == userId);
-        return secretaria == null ? null : ToDto(secretaria);
+        return secretaria == null ? null : _mapper.Map<SecretariaReadDto>(secretaria);
     }
 
     public async Task<SecretariaReadDto> CreateAsync(SecretariaCreateDto dto)
@@ -74,13 +77,15 @@ public class SecretariaService(
 
         var created = await _repository.AddAsync(secretaria);
         await _auditService.LogAsync(AuditAccion.Crear, "Secretaria", created.Id.ToString());
-        return ToDto(created);
+        return _mapper.Map<SecretariaReadDto>(created);
     }
 
     public async Task<SecretariaReadDto> UpdateAsync(int id, SecretariaUpdateDto dto)
     {
         var secretaria = await _repository.GetByIdAsync(id)
             ?? throw new KeyNotFoundException($"Secretaria con ID {id} no encontrada.");
+
+        var valoresAnteriores = AuditSnapshot.ToJson(new { secretaria.Nombre, secretaria.Apellido, secretaria.Email, secretaria.Telefono });
 
         secretaria.Nombre = dto.Nombre.Trim();
         secretaria.Apellido = dto.Apellido.Trim();
@@ -123,8 +128,9 @@ public class SecretariaService(
             throw;
         }
 
-        await _auditService.LogAsync(AuditAccion.Actualizar, "Secretaria", id.ToString());
-        return ToDto(secretaria);
+        await _auditService.LogAsync(AuditAccion.Actualizar, "Secretaria", id.ToString(),
+            valoresAnteriores, AuditSnapshot.ToJson(new { secretaria.Nombre, secretaria.Apellido, secretaria.Email, secretaria.Telefono }));
+        return _mapper.Map<SecretariaReadDto>(secretaria);
     }
 
     public async Task<bool> DeleteAsync(int id)
@@ -140,14 +146,7 @@ public class SecretariaService(
             await _repository.UpdateAsync(secretaria);
 
             if (!string.IsNullOrEmpty(secretaria.UserId))
-            {
-                var user = await _userManager.FindByIdAsync(secretaria.UserId);
-                if (user != null)
-                {
-                    await _userManager.SetLockoutEnabledAsync(user, true);
-                    await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue);
-                }
-            }
+                    await UserLockoutHelper.LockUserAsync(_userManager, secretaria.UserId);
 
             await transaction.CommitAsync();
         }
@@ -157,7 +156,8 @@ public class SecretariaService(
             throw;
         }
 
-        await _auditService.LogAsync(AuditAccion.Eliminar, "Secretaria", id.ToString());
+        await _auditService.LogAsync(AuditAccion.Eliminar, "Secretaria", id.ToString(),
+            AuditSnapshot.ToJson(new { secretaria.Nombre, secretaria.Apellido, secretaria.Dni, secretaria.Email }));
         return true;
     }
 
@@ -177,11 +177,7 @@ public class SecretariaService(
             await _repository.UpdateAsync(secretaria);
 
             if (!string.IsNullOrEmpty(secretaria.UserId))
-            {
-                var user = await _userManager.FindByIdAsync(secretaria.UserId);
-                if (user != null)
-                    await _userManager.SetLockoutEndDateAsync(user, null);
-            }
+                    await UserLockoutHelper.UnlockUserAsync(_userManager, secretaria.UserId);
 
             await transaction.CommitAsync();
         }
@@ -192,17 +188,7 @@ public class SecretariaService(
         }
 
         await _auditService.LogAsync(AuditAccion.Actualizar, "Secretaria", id.ToString());
-        return ToDto(secretaria);
+        return _mapper.Map<SecretariaReadDto>(secretaria);
     }
 
-    private static SecretariaReadDto ToDto(Secretaria s) => new()
-    {
-        Id = s.Id,
-        Nombre = s.Nombre,
-        Apellido = s.Apellido,
-        Email = s.Email,
-        Dni = s.Dni,
-        Telefono = s.Telefono,
-        TieneCuenta = !string.IsNullOrEmpty(s.UserId)
-    };
 }

@@ -65,33 +65,11 @@ namespace turnero_medico_backend.Services
 
         public async Task<IEnumerable<TurnoReadDto>> GetByPacienteAsync(int pacienteId, string? estado = null)
         {
-            var userRole = _currentUserService.GetUserRole();
-            var userId = _currentUserService.GetUserId();
-
-            if (userRole == "Admin" || userRole == "Secretaria")
-            {
-                var turnos = await _turnoRepository.FindWithDetailsAsync(t =>
-                    t.PacienteId == pacienteId &&
-                    (estado == null || t.Estado == estado));
-                return turnos.Select(t => FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(t)));
-            }
-
-            if (userRole == "Paciente")
-            {
-                var paciente = await _pacienteRepository.GetByIdAsync(pacienteId)
-                    ?? throw new InvalidOperationException($"El paciente con ID {pacienteId} no existe.");
-
-                if (paciente.UserId != userId && paciente.ResponsableId != userId)
-                    throw new UnauthorizedAccessException(
-                        "Solo puedes ver tus propios turnos o los de tus dependientes.");
-
-                var turnos = await _turnoRepository.FindWithDetailsAsync(t =>
-                    t.PacienteId == pacienteId &&
-                    (estado == null || t.Estado == estado));
-                return turnos.Select(t => FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(t)));
-            }
-
-            throw new UnauthorizedAccessException("Los doctores deben consultar turnos por doctor, no por paciente.");
+            // Este endpoint solo es accesible por Admin y Secretaria (ver controller).
+            var turnos = await _turnoRepository.FindWithDetailsAsync(t =>
+                t.PacienteId == pacienteId &&
+                (estado == null || t.Estado == estado));
+            return turnos.Select(t => FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(t)));
         }
 
         public async Task<IEnumerable<TurnoReadDto>> GetByDoctorAsync(int doctorId, string? estado = null)
@@ -246,6 +224,7 @@ namespace turnero_medico_backend.Services
             var turno = await _turnoRepository.GetByIdAsync(id)
                 ?? throw new KeyNotFoundException($"Turno con ID {id} no encontrado.");
 
+            var valoresAnteriores = AuditSnapshot.ToJson(new { turno.Estado, turno.ObservacionClinica });
             var userRole = _currentUserService.GetUserRole();
             var userId = _currentUserService.GetUserId();
 
@@ -263,7 +242,8 @@ namespace turnero_medico_backend.Services
                     turno.ObservacionClinica = dto.ObservacionClinica;
 
                 await _turnoRepository.UpdateAsync(turno);
-                await _auditService.LogAsync(AuditAccion.Actualizar, "Turno", id.ToString());
+                await _auditService.LogAsync(AuditAccion.Actualizar, "Turno", id.ToString(),
+                    valoresAnteriores, AuditSnapshot.ToJson(new { turno.Estado, turno.ObservacionClinica }));
                 var updatedAdmin = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
                 return FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(updatedAdmin!));
             }
@@ -289,7 +269,8 @@ namespace turnero_medico_backend.Services
                 turno.ObservacionClinica = dto.ObservacionClinica;
 
             await _turnoRepository.UpdateAsync(turno);
-            await _auditService.LogAsync(AuditAccion.Actualizar, "Turno", id.ToString());
+            await _auditService.LogAsync(AuditAccion.Actualizar, "Turno", id.ToString(),
+                valoresAnteriores, AuditSnapshot.ToJson(new { turno.Estado, turno.ObservacionClinica }));
             var updatedDoctor = await _turnoRepository.GetByIdWithDetailsAsync(turno.Id);
             return FiltrarCamposSensibles(_mapper.Map<TurnoReadDto>(updatedDoctor!));
         }
@@ -318,11 +299,12 @@ namespace turnero_medico_backend.Services
                 var doctor = await _doctorRepository.GetByIdAsync(doctorId)
                     ?? throw new InvalidOperationException($"El doctor con ID {doctorId} no existe.");
 
-                // Validar que la especialidad del doctor coincida con la del turno
-                if (doctor.EspecialidadId != turno.EspecialidadId)
+                // Validar que la especialidad del doctor coincida con la del turno.
+                // Solo si el turno aún tiene especialidad (puede ser null si la especialidad fue eliminada).
+                if (turno.EspecialidadId.HasValue && doctor.EspecialidadId != turno.EspecialidadId)
                 {
                     var espDoctor = doctor.EspecialidadId.HasValue ? await _especialidadRepository.GetByIdAsync(doctor.EspecialidadId.Value) : null;
-                    var espTurno = turno.EspecialidadId.HasValue ? await _especialidadRepository.GetByIdAsync(turno.EspecialidadId.Value) : null;
+                    var espTurno = await _especialidadRepository.GetByIdAsync(turno.EspecialidadId.Value);
                     throw new InvalidOperationException(
                         $"El doctor '{doctor.Nombre} {doctor.Apellido}' es especialista en '{espDoctor?.Nombre}', "
                         + $"pero el turno requiere '{espTurno?.Nombre}'.");
@@ -461,7 +443,10 @@ namespace turnero_medico_backend.Services
 
             if (userRole == "Paciente")
             {
-                var paciente = await _pacienteRepository.GetByIdAsync(turno.PacienteId)
+                // IgnoreQueryFilters: el paciente puede estar soft-deleted pero aún tener JWT válido.
+                var paciente = await _dbContext.Pacientes
+                    .IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(p => p.Id == turno.PacienteId)
                     ?? throw new InvalidOperationException("El paciente del turno no existe.");
 
                 if (paciente.UserId != userId && paciente.ResponsableId != userId)
@@ -492,7 +477,8 @@ namespace turnero_medico_backend.Services
 
             var deleted = await _turnoRepository.DeleteAsync(id);
             if (deleted)
-                await _auditService.LogAsync(AuditAccion.Eliminar, "Turno", id.ToString());
+                await _auditService.LogAsync(AuditAccion.Eliminar, "Turno", id.ToString(),
+                    AuditSnapshot.ToJson(new { turno.Estado, turno.PacienteId, turno.DoctorId, turno.FechaHora }));
             return deleted;
         }
 
@@ -597,13 +583,32 @@ namespace turnero_medico_backend.Services
 
             if (userRole == "Paciente")
             {
-                var paciente = await _pacienteRepository.GetByIdAsync(pacienteId)
+                // IgnoreQueryFilters: el paciente puede estar soft-deleted pero aún tener JWT válido.
+                var paciente = await _dbContext.Pacientes
+                    .IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(p => p.Id == pacienteId)
                     ?? throw new InvalidOperationException($"El paciente con ID {pacienteId} no existe.");
 
                 if (paciente.UserId != userId && paciente.ResponsableId != userId)
                     throw new UnauthorizedAccessException("Solo puedes ver el historial propio o de tus dependientes.");
             }
-            else if (userRole != "Admin" && userRole != "Secretaria" && userRole != "Doctor")
+            else if (userRole == "Doctor")
+            {
+                // El doctor solo puede ver el historial de pacientes con los que tiene turnos.
+                var doctorId = await _dbContext.Doctores
+                    .Where(d => d.UserId == userId)
+                    .Select(d => (int?)d.Id)
+                    .FirstOrDefaultAsync()
+                    ?? throw new UnauthorizedAccessException("No se encontró un registro de doctor asociado a tu usuario.");
+
+                var tieneTurno = await _dbContext.Turnos
+                    .AnyAsync(t => t.DoctorId == doctorId && t.PacienteId == pacienteId &&
+                        (t.Estado == EstadoTurno.Confirmado || t.Estado == EstadoTurno.Completado));
+
+                if (!tieneTurno)
+                    throw new UnauthorizedAccessException("No tienes permisos para ver el historial de este paciente.");
+            }
+            else if (userRole != "Admin" && userRole != "Secretaria")
             {
                 throw new UnauthorizedAccessException("No tienes permisos para ver el historial.");
             }

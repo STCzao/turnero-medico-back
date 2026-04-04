@@ -1,4 +1,4 @@
-Ôªøusing Asp.Versioning;
+using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using turnero_medico_backend.DTOs.Common;
@@ -7,10 +7,10 @@ using turnero_medico_backend.Services.Interfaces;
 
 namespace turnero_medico_backend.Controllers
 {
-    // Cat√°logo de obras sociales.
+    // Cat·logo de obras sociales.
     // GET es accesible por cualquier usuario autenticado.
     // CREATE/UPDATE es Admin o Secretaria. DELETE es solo Admin.
-    // El listado est√° cacheado en ObraSocialService ‚Äî 60 minutos en IMemoryCache.
+    // El listado est· cacheado en ObraSocialService ó 60 minutos en IMemoryCache.
     [ApiVersion("1.0")]
     [ApiController]
     [Route("api/[controller]")]
@@ -39,8 +39,6 @@ namespace turnero_medico_backend.Controllers
         [Authorize(Roles = "Admin,Secretaria")]
         public async Task<ActionResult<ObraSocialReadDto>> Create(ObraSocialCreateDto dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
 
             var obra = await _service.CreateAsync(dto);
             return CreatedAtAction(nameof(GetById), new { id = obra.Id }, obra);
@@ -50,8 +48,6 @@ namespace turnero_medico_backend.Controllers
         [Authorize(Roles = "Admin,Secretaria")]
         public async Task<ActionResult<ObraSocialReadDto>> Update(int id, ObraSocialUpdateDto dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
 
             var obra = await _service.UpdateAsync(id, dto);
             if (obra == null)

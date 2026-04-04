@@ -66,7 +66,7 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // ← AutoMapper
-builder.Services.AddAutoMapper(typeof(AutoMapperProfile).Assembly);
+builder.Services.AddAutoMapper(cfg => cfg.AddProfile<AutoMapperProfile>());
 
 // ← HttpContextAccessor para acceder a User actual en servicios
 builder.Services.AddHttpContextAccessor();
