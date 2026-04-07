@@ -24,7 +24,14 @@
       "Bash(\"D:\\\\Aplicaciones\\\\Drivers\\\\dotnet\\\\dotnet.exe\" ef:*)",
       "Bash(\"D:\\\\Aplicaciones\\\\Drivers\\\\dotnet\\\\dotnet.exe\" tool:*)",
       "Bash(dotnet list:*)",
-      "Bash(dotnet test:*)"
+      "Bash(dotnet test:*)",
+      "Bash(grep -v \"^$\")",
+      "Bash(dotnet add:*)",
+      "Bash(where reportgenerator:*)",
+      "Bash(reportgenerator --version)",
+      "Bash(powershell -Command ':*)",
+      "Bash(powershell -File /tmp/parse_coverage.ps1 'd:/Programacion/Practica/Full Stack/turnero-medico/turnero-medico-back/TestResults/3033b9d0-a52b-4662-8fcb-b896a2e23ecd/coverage.cobertura.xml')",
+      "Bash(powershell -File /tmp/parse_coverage.ps1 'd:/Programacion/Practica/Full Stack/turnero-medico/turnero-medico-back/TestResults/3b67c347-1cc5-4df8-9d5c-bd42486f0257/coverage.cobertura.xml')"
     ]
   }
 }

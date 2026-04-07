@@ -20,7 +20,10 @@ using turnero_medico_backend.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+// Skip local overrides in Testing so test JWT secrets and AdminSeed credentials
+// from appsettings.Testing.json are not overwritten by appsettings.Local.json.
+if (!builder.Environment.IsEnvironment("Testing"))
+    builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
 
 // ─── Serilog como provider de logging ────────────────────────────────────────
 // Note: no bootstrap logger — avoids Serilog's ReloadableLogger.Freeze() issue
@@ -77,27 +80,6 @@ builder.Services.AddHttpContextAccessor();
 // ← MemoryCache para catálogos de lectura frecuente (Especialidades, ObrasSociales)
 builder.Services.AddMemoryCache();
 
-// ── Leer DATABASE_URL (Render) o ConnectionStrings__DefaultConnection ──
-var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL")
-    ?? builder.Configuration["DATABASE_URL"];
-
-string connectionString;
-
-if (!string.IsNullOrWhiteSpace(databaseUrl))
-{
-    // Render provee la URL en formato URI (postgresql://user:pass@host/db)
-    // Npgsql necesita formato ADO.NET (Host=...;Database=...;Username=...;Password=...)
-    var uri = new Uri(databaseUrl);
-    var userInfo = uri.UserInfo.Split(':');
-    var port = uri.Port > 0 ? uri.Port : 5432;
-    connectionString = $"Host={uri.Host};Port={port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
-}
-else
-{
-    connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-        ?? throw new InvalidOperationException("Falta 'DATABASE_URL' o 'ConnectionStrings__DefaultConnection'.");
-}
-
 var secretKey = builder.Configuration["Jwt:SecretKey"];
 if (string.IsNullOrWhiteSpace(secretKey) || Encoding.UTF8.GetByteCount(secretKey) < 32)
     throw new InvalidOperationException(
@@ -106,9 +88,35 @@ if (string.IsNullOrWhiteSpace(secretKey) || Encoding.UTF8.GetByteCount(secretKey
 var issuer = builder.Configuration["Jwt:Issuer"] ?? "turnero-medico-backend";
 var audience = builder.Configuration["Jwt:Audience"] ?? "turnero-medico-app";
 
-// Configurar Entity Framework con PostgreSQL
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(connectionString));
+// En Testing NO se registra Npgsql — ConfigureTestServices (en el proyecto de tests)
+// agrega el proveedor InMemory. Esto evita el conflicto "Only a single database provider"
+// que ocurre cuando WebApplicationFactory intenta reemplazar un proveedor ya registrado.
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    // ── Leer DATABASE_URL (Render) o ConnectionStrings__DefaultConnection ──
+    var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL")
+        ?? builder.Configuration["DATABASE_URL"];
+
+    string connectionString;
+
+    if (!string.IsNullOrWhiteSpace(databaseUrl))
+    {
+        // Render provee la URL en formato URI (postgresql://user:pass@host/db)
+        // Npgsql necesita formato ADO.NET (Host=...;Database=...;Username=...;Password=...)
+        var uri = new Uri(databaseUrl);
+        var userInfo = uri.UserInfo.Split(':');
+        var port = uri.Port > 0 ? uri.Port : 5432;
+        connectionString = $"Host={uri.Host};Port={port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+    }
+    else
+    {
+        connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException("Falta 'DATABASE_URL' o 'ConnectionStrings__DefaultConnection'.");
+    }
+
+    builder.Services.AddDbContext<ApplicationDbContext>(options =>
+        options.UseNpgsql(connectionString));
+}
 
 // API versioning accesible para las rutas
 builder.Services.AddApiVersioning(options =>
