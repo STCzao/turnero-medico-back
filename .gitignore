@@ -3,6 +3,9 @@
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/
+
+# Test results
+[Tt]est[Rr]esults/
 x64/
 x86/
 [Ww][Ii][Nn]32/
