@@ -101,6 +101,13 @@ namespace turnero_medico_backend.Services
 
         public async Task<PacienteReadDto> CreateAsync(PacienteCreateDto dto)
         {
+            // IgnoreQueryFilters para detectar también soft-deleted con el mismo DNI
+            var existente = await _dbContext.Pacientes
+                .IgnoreQueryFilters()
+                .AnyAsync(p => p.Dni == dto.Dni.Trim());
+            if (existente)
+                throw new InvalidOperationException("Ya existe un paciente con ese DNI.");
+
             var paciente = _mapper.Map<Paciente>(dto);
             var createdPaciente = await _pacienteRepository.AddAsync(paciente);
             await _auditService.LogAsync(AuditAccion.Crear, "Paciente", createdPaciente.Id.ToString());

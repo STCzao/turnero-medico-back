@@ -31,7 +31,9 @@
       "Bash(reportgenerator --version)",
       "Bash(powershell -Command ':*)",
       "Bash(powershell -File /tmp/parse_coverage.ps1 'd:/Programacion/Practica/Full Stack/turnero-medico/turnero-medico-back/TestResults/3033b9d0-a52b-4662-8fcb-b896a2e23ecd/coverage.cobertura.xml')",
-      "Bash(powershell -File /tmp/parse_coverage.ps1 'd:/Programacion/Practica/Full Stack/turnero-medico/turnero-medico-back/TestResults/3b67c347-1cc5-4df8-9d5c-bd42486f0257/coverage.cobertura.xml')"
+      "Bash(powershell -File /tmp/parse_coverage.ps1 'd:/Programacion/Practica/Full Stack/turnero-medico/turnero-medico-back/TestResults/3b67c347-1cc5-4df8-9d5c-bd42486f0257/coverage.cobertura.xml')",
+      "Bash(grep -n \"GetByIdUnscopedAsync\" \"d:/Programacion/Practica/Full Stack/turnero-medico/turnero-medico-back/Services\"*.cs)",
+      "Bash(grep -n \"null!\" \"d:/Programacion/Practica/Full Stack/turnero-medico/turnero-medico-back\"/*/*.cs)"
     ]
   }
 }

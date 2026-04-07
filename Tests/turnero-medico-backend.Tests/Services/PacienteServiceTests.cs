@@ -278,7 +278,51 @@ namespace turnero_medico_backend.Tests.Services
         // ── CreateAsync ─────────────────────────────────────────────
 
         [Fact]
-        public async Task CreateAsync_FlujoValido_CreaYRetornaDto()
+        public async Task CreateAsync_DniDuplicadoActivo_LanzaInvalidOperation()
+        {
+            _dbContext.Pacientes.Add(new Paciente
+            {
+                Id = 10, Dni = "12345678", Nombre = "Juan", Apellido = "Perez",
+                Email = "juan@test.com", Telefono = "123",
+                FechaNacimiento = DateTime.UtcNow.AddYears(-30)
+            });
+            await _dbContext.SaveChangesAsync();
+
+            var dto = new PacienteCreateDto
+            {
+                Dni = "12345678", Nombre = "Otro", Apellido = "Test",
+                Email = "otro@test.com", Telefono = "456",
+                FechaNacimiento = DateTime.UtcNow.AddYears(-25)
+            };
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.CreateAsync(dto));
+        }
+
+        [Fact]
+        public async Task CreateAsync_DniDuplicadoEnSoftDeleted_LanzaInvalidOperation()
+        {
+            // El DNI no puede reutilizarse aunque el paciente esté eliminado (soft-delete)
+            _dbContext.Pacientes.Add(new Paciente
+            {
+                Id = 10, Dni = "12345678", Nombre = "Juan", Apellido = "Perez",
+                Email = "juan@test.com", Telefono = "123",
+                FechaNacimiento = DateTime.UtcNow.AddYears(-30),
+                IsDeleted = true
+            });
+            await _dbContext.SaveChangesAsync();
+
+            var dto = new PacienteCreateDto
+            {
+                Dni = "12345678", Nombre = "Otro", Apellido = "Test",
+                Email = "otro@test.com", Telefono = "456",
+                FechaNacimiento = DateTime.UtcNow.AddYears(-25)
+            };
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.CreateAsync(dto));
+        }
+
+        [Fact]
+        public async Task CreateAsync_DniUnico_CreaYRetornaDto()
         {
             var paciente = CrearPaciente();
             _pacienteRepoMock.Setup(r => r.AddAsync(It.IsAny<Paciente>())).ReturnsAsync(paciente);

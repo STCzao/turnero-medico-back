@@ -82,7 +82,8 @@ namespace turnero_medico_backend.Tests.Services
         private DoctorCreateDto DtoCrear() => new()
         {
             Nombre = "Carlos", Apellido = "Lopez",
-            Matricula = "MAT001", Email = "carlos@test.com",
+            Matricula = "MAT001", Dni = "22334455",
+            Email = "carlos@test.com",
             Telefono = "1122334455", EspecialidadId = 1
         };
 
@@ -98,6 +99,58 @@ namespace turnero_medico_backend.Tests.Services
         public async Task CreateAsync_EspecialidadInexistente_LanzaInvalidOperation()
         {
             _especialidadRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync((Especialidad?)null);
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.CreateAsync(DtoCrear()));
+        }
+
+        [Fact]
+        public async Task CreateAsync_DniDuplicado_LanzaInvalidOperation()
+        {
+            _especialidadRepoMock.Setup(r => r.GetByIdAsync(1))
+                .ReturnsAsync(new Especialidad { Id = 1, Nombre = "Cardiología" });
+
+            _dbContext.Doctores.Add(new Doctor
+            {
+                Id = 10, Matricula = "MAT999", Dni = "22334455",
+                Nombre = "Otro", Apellido = "Doctor", Email = "otro@test.com",
+                Telefono = "999999999", EspecialidadId = 1
+            });
+            await _dbContext.SaveChangesAsync();
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.CreateAsync(DtoCrear()));
+        }
+
+        [Fact]
+        public async Task CreateAsync_DniDuplicadoEnSoftDeleted_LanzaInvalidOperation()
+        {
+            _especialidadRepoMock.Setup(r => r.GetByIdAsync(1))
+                .ReturnsAsync(new Especialidad { Id = 1, Nombre = "Cardiología" });
+
+            _dbContext.Doctores.Add(new Doctor
+            {
+                Id = 10, Matricula = "MAT999", Dni = "22334455",
+                Nombre = "Otro", Apellido = "Doctor", Email = "otro@test.com",
+                Telefono = "999999999", EspecialidadId = 1,
+                IsDeleted = true
+            });
+            await _dbContext.SaveChangesAsync();
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.CreateAsync(DtoCrear()));
+        }
+
+        [Fact]
+        public async Task CreateAsync_MatriculaDuplicada_LanzaInvalidOperation()
+        {
+            _especialidadRepoMock.Setup(r => r.GetByIdAsync(1))
+                .ReturnsAsync(new Especialidad { Id = 1, Nombre = "Cardiología" });
+
+            _dbContext.Doctores.Add(new Doctor
+            {
+                Id = 10, Matricula = "MAT001", Dni = "99887766", // misma matrícula, diferente DNI
+                Nombre = "Otro", Apellido = "Doctor", Email = "otro@test.com",
+                Telefono = "999999999", EspecialidadId = 1
+            });
+            await _dbContext.SaveChangesAsync();
 
             await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.CreateAsync(DtoCrear()));
         }

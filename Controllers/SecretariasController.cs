@@ -14,10 +14,11 @@ namespace turnero_medico_backend.Controllers;
 [ApiVersion("1.0")]
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin")]
+[Authorize]
 public class SecretariasController(ISecretariaService _service) : ControllerBase
 {
     [HttpGet]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<PagedResultDto<SecretariaReadDto>>> GetAll(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
@@ -26,6 +27,9 @@ public class SecretariasController(ISecretariaService _service) : ControllerBase
         return Ok(result);
     }
 
+    // Accesible exclusivamente por la propia secretaria autenticada.
+    // Nota: no usar [Authorize(Roles = "Admin")] en la clase porque múltiples
+    // [Authorize] se combinan con AND — un Admin y Secretaria simultáneos no existen.
     [HttpGet("me")]
     [Authorize(Roles = "Secretaria")]
     public async Task<ActionResult<SecretariaReadDto>> GetMyProfile()
@@ -38,6 +42,7 @@ public class SecretariasController(ISecretariaService _service) : ControllerBase
     }
 
     [HttpGet("{id}")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<SecretariaReadDto>> GetById(int id)
     {
         var secretaria = await _service.GetByIdAsync(id);
@@ -48,17 +53,17 @@ public class SecretariasController(ISecretariaService _service) : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<SecretariaReadDto>> Create(SecretariaCreateDto dto)
     {
-
         var secretaria = await _service.CreateAsync(dto);
         return CreatedAtAction(nameof(GetById), new { id = secretaria.Id }, secretaria);
     }
 
     [HttpPut("{id}")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<SecretariaReadDto>> Update(int id, SecretariaUpdateDto dto)
     {
-
         if (id != dto.Id)
             return BadRequest(new { mensaje = "El ID de la URL no coincide con el ID del DTO" });
 
@@ -67,6 +72,7 @@ public class SecretariasController(ISecretariaService _service) : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult> Delete(int id)
     {
         await _service.DeleteAsync(id);
@@ -74,6 +80,7 @@ public class SecretariasController(ISecretariaService _service) : ControllerBase
     }
 
     [HttpPut("{id}/reactivar")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<SecretariaReadDto>> Reactivar(int id)
     {
         var secretaria = await _service.ReactivarAsync(id);
