@@ -42,6 +42,11 @@ namespace turnero_medico_backend.Repositories
             return await _dbSet.Where(predicate).ToListAsync();
         }
 
+        public virtual async Task<T?> FindFirstAsync(Expression<Func<T, bool>> predicate)
+        {
+            return await _dbSet.Where(predicate).FirstOrDefaultAsync();
+        }
+
         // Usa AnyAsync en lugar de FindAsync + null-check para evitar cargar la entidad completa
         public virtual async Task<bool> ExistAsync(int id)
             => await _dbSet.AnyAsync(e => EF.Property<int>(e, "Id") == id);

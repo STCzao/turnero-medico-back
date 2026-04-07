@@ -27,7 +27,10 @@ builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, relo
 // in integration tests where Program.cs may be invoked multiple times.
 builder.Host.UseSerilog((ctx, services, config) => config
     .MinimumLevel.Information()
-    .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command",
+        ctx.HostingEnvironment.IsDevelopment()
+            ? Serilog.Events.LogEventLevel.Information   // queries visibles en dev para detectar N+1
+            : Serilog.Events.LogEventLevel.Warning)
     .Enrich.FromLogContext()
     .Enrich.WithProperty("Application", "turnero-medico-backend")
     .WriteTo.Console(outputTemplate:
@@ -270,7 +273,16 @@ app.MapHealthChecks("/healthz", new Microsoft.AspNetCore.Diagnostics.HealthCheck
     ResponseWriter = async (ctx, rpt) =>
     {
         ctx.Response.ContentType = "application/json";
-        var result = System.Text.Json.JsonSerializer.Serialize(new { status = rpt.Status.ToString() });
+        var result = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            status = rpt.Status.ToString(),
+            checks = rpt.Entries.Select(e => new
+            {
+                name = e.Key,
+                status = e.Value.Status.ToString(),
+                description = e.Value.Description
+            })
+        });
         await ctx.Response.WriteAsync(result);
     }
 });

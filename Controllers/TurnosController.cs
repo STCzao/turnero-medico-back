@@ -12,11 +12,14 @@ namespace turnero_medico_backend.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
+    [Produces("application/json")]
     public class TurnosController(ITurnoService _service) : ControllerBase
     {
 
         [HttpGet]
         [Authorize(Roles = "Admin,Secretaria")]
+        [ProducesResponseType<PagedResultDto<TurnoReadDto>>(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<PagedResultDto<TurnoReadDto>>> GetAll(
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20,
@@ -31,6 +34,8 @@ namespace turnero_medico_backend.Controllers
 
         [HttpGet("paciente/{pacienteId}")]
         [Authorize(Roles = "Admin,Secretaria")]
+        [ProducesResponseType<IEnumerable<TurnoReadDto>>(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<IEnumerable<TurnoReadDto>>> GetByPaciente(
             int pacienteId,
             [FromQuery] string? estado = null)
@@ -44,6 +49,9 @@ namespace turnero_medico_backend.Controllers
 
         [HttpGet("doctor/{doctorId}")]
         [Authorize(Roles = "Admin,Secretaria")]
+        [ProducesResponseType<IEnumerable<TurnoReadDto>>(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult<IEnumerable<TurnoReadDto>>> GetByDoctor(
             int doctorId,
             [FromQuery] string? estado = null)
@@ -57,6 +65,8 @@ namespace turnero_medico_backend.Controllers
 
         [HttpGet("{id}")]
         [Authorize(Roles = "Admin,Secretaria")]
+        [ProducesResponseType<TurnoReadDto>(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<TurnoReadDto>> GetById(int id)
         {
             var turno = await _service.GetByIdAsync(id);
@@ -69,6 +79,9 @@ namespace turnero_medico_backend.Controllers
         // Paciente / Secretaria / Admin crean una solicitud (sin fecha)
         [HttpPost]
         [Authorize(Roles = "Paciente,Secretaria,Admin")]
+        [ProducesResponseType<TurnoReadDto>(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult<TurnoReadDto>> Create(TurnoCreateDto dto)
         {
 
@@ -79,6 +92,10 @@ namespace turnero_medico_backend.Controllers
         // Secretaria / Admin: asignan fecha, doctor y confirman la solicitud
         [HttpPost("{id}/confirmar")]
         [Authorize(Roles = "Secretaria,Admin")]
+        [ProducesResponseType<TurnoReadDto>(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<ActionResult<TurnoReadDto>> Confirmar(int id, ConfirmarTurnoDto dto)
         {
 
@@ -89,6 +106,9 @@ namespace turnero_medico_backend.Controllers
         // Secretaria / Admin: rechazan la solicitud con motivo obligatorio
         [HttpPost("{id}/rechazar")]
         [Authorize(Roles = "Secretaria,Admin")]
+        [ProducesResponseType<TurnoReadDto>(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<TurnoReadDto>> Rechazar(int id, RechazarTurnoDto dto)
         {
 
@@ -99,6 +119,10 @@ namespace turnero_medico_backend.Controllers
         // Cancelacion: Paciente, Doctor, Secretaria o Admin con reglas propias
         [HttpPost("{id}/cancelar")]
         [Authorize(Roles = "Paciente,Doctor,Secretaria,Admin")]
+        [ProducesResponseType<TurnoReadDto>(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<TurnoReadDto>> Cancelar(int id, CancelarTurnoDto dto)
         {
 
@@ -109,6 +133,10 @@ namespace turnero_medico_backend.Controllers
         // Doctor: marca Completado/Ausente y agrega observacion clinica
         [HttpPatch("{id}")]
         [Authorize(Roles = "Doctor,Admin")]
+        [ProducesResponseType<TurnoReadDto>(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<TurnoReadDto>> Update(int id, TurnoUpdateDto dto)
         {
 
@@ -121,6 +149,8 @@ namespace turnero_medico_backend.Controllers
 
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult> Delete(int id)
         {
             await _service.DeleteAsync(id);
@@ -130,6 +160,8 @@ namespace turnero_medico_backend.Controllers
         // Mis turnos — el paciente/doctor autenticado ve sus turnos sin conocer su ID numérico
         [HttpGet("me")]
         [Authorize(Roles = "Paciente,Doctor")]
+        [ProducesResponseType<IEnumerable<TurnoReadDto>>(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<IEnumerable<TurnoReadDto>>> GetMyTurnos([FromQuery] string? estado = null)
         {
             if (!ValidarEstado(estado, out var errorResult))
@@ -142,6 +174,7 @@ namespace turnero_medico_backend.Controllers
         // Agenda del doctor autenticado para una fecha
         [HttpGet("doctor/me/agenda")]
         [Authorize(Roles = "Doctor")]
+        [ProducesResponseType<IEnumerable<TurnoReadDto>>(StatusCodes.Status200OK)]
         public async Task<ActionResult<IEnumerable<TurnoReadDto>>> GetMyAgenda([FromQuery] DateTime fecha)
         {
             var turnos = await _service.GetMyAgendaAsync(fecha);
@@ -151,6 +184,7 @@ namespace turnero_medico_backend.Controllers
         // Turnos pendientes de gestión — Secretaria/Admin
         [HttpGet("pendientes")]
         [Authorize(Roles = "Secretaria,Admin")]
+        [ProducesResponseType<PagedResultDto<TurnoReadDto>>(StatusCodes.Status200OK)]
         public async Task<ActionResult<PagedResultDto<TurnoReadDto>>> GetPendientes(
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20)
@@ -162,6 +196,9 @@ namespace turnero_medico_backend.Controllers
         // Historial clínico — turnos completados de un paciente
         [HttpGet("paciente/{pacienteId}/historial")]
         [Authorize(Roles = "Admin,Secretaria,Paciente,Doctor")]
+        [ProducesResponseType<IEnumerable<TurnoReadDto>>(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<IEnumerable<TurnoReadDto>>> GetHistorial(int pacienteId)
         {
             var turnos = await _service.GetHistorialAsync(pacienteId);

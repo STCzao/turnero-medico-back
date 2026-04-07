@@ -58,10 +58,7 @@ namespace turnero_medico_backend.Services
             if (pacienteExistente != null && !string.IsNullOrEmpty(pacienteExistente.UserId))
                 throw new InvalidOperationException("No se pudo completar el registro. Verifique los datos ingresados.");
 
-            // Calcular si es mayor de edad
-            var edad = DateTime.UtcNow.Year - fechaNacimiento.Year;
-            if (fechaNacimiento > DateTime.UtcNow.AddYears(-edad)) edad--;
-            var esMayorDeEdad = edad >= 18;
+            var esMayorDeEdad = EdadHelper.EsMayorDeEdad(fechaNacimiento);
 
             // --- Todo dentro de una transacción ---
             await using var transaction = await _dbContext.Database.BeginTransactionAsync();

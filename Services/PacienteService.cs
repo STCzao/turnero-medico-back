@@ -91,8 +91,7 @@ namespace turnero_medico_backend.Services
             if (string.IsNullOrEmpty(userId))
                 throw new UnauthorizedAccessException("No se pudo obtener el ID del usuario autenticado");
 
-            var pacientes = await _pacienteRepository.FindAsync(p => p.UserId == userId);
-            var paciente = pacientes.FirstOrDefault();
+            var paciente = await _pacienteRepository.FindFirstAsync(p => p.UserId == userId);
 
             if (paciente == null)
                 return null;
@@ -124,11 +123,7 @@ namespace turnero_medico_backend.Services
             _mapper.Map(dto, paciente);
             paciente.FechaNacimiento = DateTime.SpecifyKind(paciente.FechaNacimiento, DateTimeKind.Utc);
 
-            // Recalcular EsMayorDeEdad en base a FechaNacimiento actualizada
-            var hoy = DateTime.UtcNow;
-            var edad = hoy.Year - paciente.FechaNacimiento.Year;
-            if (paciente.FechaNacimiento > hoy.AddYears(-edad)) edad--;
-            paciente.EsMayorDeEdad = edad >= 18;
+            paciente.EsMayorDeEdad = EdadHelper.EsMayorDeEdad(paciente.FechaNacimiento);
 
             await _pacienteRepository.UpdateAsync(paciente);
             await _auditService.LogAsync(AuditAccion.Actualizar, "Paciente", id.ToString(),
@@ -149,12 +144,23 @@ namespace turnero_medico_backend.Services
             if (tieneTurnosActivos)
                 throw new InvalidOperationException("No se puede eliminar un paciente con turnos activos.");
 
-            paciente.IsDeleted = true;
-            paciente.DeletedAt = DateTime.UtcNow;
-            await _pacienteRepository.UpdateAsync(paciente);
+            await using var transaction = await _dbContext.Database.BeginTransactionAsync();
+            try
+            {
+                paciente.IsDeleted = true;
+                paciente.DeletedAt = DateTime.UtcNow;
+                await _pacienteRepository.UpdateAsync(paciente);
 
-            if (!string.IsNullOrEmpty(paciente.UserId))
-                await UserLockoutHelper.LockUserAsync(_userManager, paciente.UserId);
+                if (!string.IsNullOrEmpty(paciente.UserId))
+                    await UserLockoutHelper.LockUserAsync(_userManager, paciente.UserId);
+
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
 
             await _auditService.LogAsync(AuditAccion.Eliminar, "Paciente", id.ToString(),
                 AuditSnapshot.ToJson(new { paciente.Nombre, paciente.Apellido, paciente.Dni, paciente.Email }));
@@ -169,12 +175,23 @@ namespace turnero_medico_backend.Services
             if (!paciente.IsDeleted)
                 throw new InvalidOperationException("El paciente ya se encuentra activo.");
 
-            paciente.IsDeleted = false;
-            paciente.DeletedAt = null;
-            await _pacienteRepository.UpdateAsync(paciente);
+            await using var transaction = await _dbContext.Database.BeginTransactionAsync();
+            try
+            {
+                paciente.IsDeleted = false;
+                paciente.DeletedAt = null;
+                await _pacienteRepository.UpdateAsync(paciente);
 
-            if (!string.IsNullOrEmpty(paciente.UserId))
-                await UserLockoutHelper.UnlockUserAsync(_userManager, paciente.UserId);
+                if (!string.IsNullOrEmpty(paciente.UserId))
+                    await UserLockoutHelper.UnlockUserAsync(_userManager, paciente.UserId);
+
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
 
             await _auditService.LogAsync(AuditAccion.Actualizar, "Paciente", id.ToString());
             return _mapper.Map<PacienteReadDto>(paciente);
@@ -222,8 +239,6 @@ namespace turnero_medico_backend.Services
                     "Los pacientes dependientes no pueden registrar sus propios dependientes.");
 
             var fechaNacimientoUtc = DateTime.SpecifyKind(dto.FechaNacimiento, DateTimeKind.Utc);
-            var edad = DateTime.UtcNow.Year - fechaNacimientoUtc.Year;
-            if (fechaNacimientoUtc > DateTime.UtcNow.AddYears(-edad)) edad--;
 
             var dependiente = new Paciente
             {
@@ -233,7 +248,7 @@ namespace turnero_medico_backend.Services
                 FechaNacimiento = fechaNacimientoUtc,
                 Telefono = dto.Telefono ?? string.Empty,
                 ResponsableId = userId,
-                EsMayorDeEdad = edad >= 18,
+                EsMayorDeEdad = EdadHelper.EsMayorDeEdad(fechaNacimientoUtc),
                 UserId = null  // Los dependientes no tienen cuenta de usuario
             };
 
@@ -259,11 +274,7 @@ namespace turnero_medico_backend.Services
             dependiente.FechaNacimiento = DateTime.SpecifyKind(dto.FechaNacimiento, DateTimeKind.Utc);
             dependiente.Telefono = dto.Telefono ?? string.Empty;
 
-            // Recalcular mayoría de edad por si cambió la fecha
-            var hoy = DateTime.UtcNow;
-            var edad = hoy.Year - dependiente.FechaNacimiento.Year;
-            if (dependiente.FechaNacimiento > hoy.AddYears(-edad)) edad--;
-            dependiente.EsMayorDeEdad = edad >= 18;
+            dependiente.EsMayorDeEdad = EdadHelper.EsMayorDeEdad(dependiente.FechaNacimiento);
 
             await _pacienteRepository.UpdateAsync(dependiente);
             await _auditService.LogAsync(AuditAccion.Actualizar, "Dependiente", id.ToString());
@@ -301,8 +312,7 @@ namespace turnero_medico_backend.Services
             if (string.IsNullOrEmpty(userId))
                 throw new UnauthorizedAccessException("No se pudo obtener el ID del usuario autenticado.");
 
-            var pacientes = await _pacienteRepository.FindAsync(p => p.UserId == userId);
-            var paciente = pacientes.FirstOrDefault();
+            var paciente = await _pacienteRepository.FindFirstAsync(p => p.UserId == userId);
             if (paciente == null)
                 return null;
 

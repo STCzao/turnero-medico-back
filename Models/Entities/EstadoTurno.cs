@@ -32,5 +32,37 @@ namespace turnero_medico_backend.Models.Entities
             Ausente,
             Cancelado
         ];
+
+        // ─────────────────────────────────────────────────────────────
+        // MÁQUINA DE ESTADOS — transiciones válidas
+        // ─────────────────────────────────────────────────────────────
+
+        private static readonly Dictionary<string, HashSet<string>> TransicionesValidas = new()
+        {
+            [SolicitudPendiente] = [Confirmado, Rechazado, Cancelado],
+            [Confirmado]         = [Completado, Ausente, Cancelado],
+            [Rechazado]          = [],
+            [Completado]         = [],
+            [Ausente]            = [],
+            [Cancelado]          = [],
+        };
+
+        /// <summary>
+        /// Valida que la transición de estado sea permitida.
+        /// Lanza InvalidOperationException si no lo es.
+        /// </summary>
+        public static void ValidarTransicion(string estadoActual, string nuevoEstado)
+        {
+            if (!TransicionesValidas.TryGetValue(estadoActual, out var permitidos))
+                throw new InvalidOperationException($"Estado actual '{estadoActual}' no es reconocido.");
+
+            if (!permitidos.Contains(nuevoEstado))
+                throw new InvalidOperationException(
+                    $"No se puede pasar de '{estadoActual}' a '{nuevoEstado}'. " +
+                    $"Transiciones permitidas: {(permitidos.Count > 0 ? string.Join(", ", permitidos) : "ninguna (estado final)")}.");
+        }
+
+        public static bool EsEstadoFinal(string estado)
+            => TransicionesValidas.TryGetValue(estado, out var permitidos) && permitidos.Count == 0;
     }
 }
