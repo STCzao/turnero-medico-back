@@ -35,18 +35,8 @@ namespace turnero_medico_backend.Migrations
                 oldClrType: typeof(int),
                 oldType: "integer");
 
-            migrationBuilder.AddColumn<DateTime>(
-                name: "DeletedAt",
-                table: "Secretarias",
-                type: "timestamp with time zone",
-                nullable: true);
-
-            migrationBuilder.AddColumn<bool>(
-                name: "IsDeleted",
-                table: "Secretarias",
-                type: "boolean",
-                nullable: false,
-                defaultValue: false);
+            // DeletedAt e IsDeleted en Secretarias y Doctores ya fueron agregados
+            // por la migración anterior SoftDeleteAndNullableEspecialidad (con IF NOT EXISTS).
 
             migrationBuilder.AlterColumn<int>(
                 name: "EspecialidadId",
@@ -55,19 +45,6 @@ namespace turnero_medico_backend.Migrations
                 nullable: true,
                 oldClrType: typeof(int),
                 oldType: "integer");
-
-            migrationBuilder.AddColumn<DateTime>(
-                name: "DeletedAt",
-                table: "Doctores",
-                type: "timestamp with time zone",
-                nullable: true);
-
-            migrationBuilder.AddColumn<bool>(
-                name: "IsDeleted",
-                table: "Doctores",
-                type: "boolean",
-                nullable: false,
-                defaultValue: false);
 
             migrationBuilder.AddForeignKey(
                 name: "FK_Doctores_Especialidades_EspecialidadId",
@@ -109,21 +86,7 @@ namespace turnero_medico_backend.Migrations
                 name: "FK_Turnos_Especialidades_EspecialidadId",
                 table: "Turnos");
 
-            migrationBuilder.DropColumn(
-                name: "DeletedAt",
-                table: "Secretarias");
-
-            migrationBuilder.DropColumn(
-                name: "IsDeleted",
-                table: "Secretarias");
-
-            migrationBuilder.DropColumn(
-                name: "DeletedAt",
-                table: "Doctores");
-
-            migrationBuilder.DropColumn(
-                name: "IsDeleted",
-                table: "Doctores");
+            // DeletedAt e IsDeleted son responsabilidad de SoftDeleteAndNullableEspecialidad.
 
             migrationBuilder.AlterColumn<int>(
                 name: "EspecialidadId",
