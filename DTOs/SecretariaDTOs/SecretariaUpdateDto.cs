@@ -17,11 +17,6 @@ public class SecretariaUpdateDto
     [RegularExpression(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$", ErrorMessage = "El apellido solo puede contener letras y espacios")]
     public string Apellido { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "El email es obligatorio")]
-    [EmailAddress(ErrorMessage = "El email no tiene un formato válido")]
-    [StringLength(256, ErrorMessage = "El email no puede exceder 256 caracteres")]
-    public string Email { get; set; } = string.Empty;
-
     [Required(ErrorMessage = "El teléfono es obligatorio")]
     [RegularExpression(@"^[\d\s\-\+\(\)]{8,20}$", ErrorMessage = "El teléfono debe tener entre 8 y 20 caracteres")]
     public string Telefono { get; set; } = string.Empty;

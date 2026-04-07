@@ -71,6 +71,7 @@ Integration/
  TestThrowController.cs
  TurnosIntegrationTests.cs
 Models/
+ DtoValidationTests.cs
  EdadHelperTests.cs
  EstadoTurnoTests.cs
 obj/Debug/net10.0/

@@ -89,10 +89,9 @@ public class SecretariaService(
 
         secretaria.Nombre = dto.Nombre.Trim();
         secretaria.Apellido = dto.Apellido.Trim();
-        secretaria.Email = dto.Email.Trim();
         secretaria.Telefono = dto.Telefono.Trim();
 
-        // Sincronizar datos en AspNetUsers si tiene cuenta vinculada.
+        // Sincronizar nombre y apellido en AspNetUsers si tiene cuenta vinculada.
         // Ambas operaciones dentro de una transacción para evitar inconsistencias.
         await using var transaction = await _dbContext.Database.BeginTransactionAsync();
         try
@@ -104,10 +103,6 @@ public class SecretariaService(
                 {
                     user.Nombre = secretaria.Nombre;
                     user.Apellido = secretaria.Apellido;
-                    user.Email = secretaria.Email;
-                    user.UserName = secretaria.Email;
-                    user.NormalizedEmail = secretaria.Email.ToUpperInvariant();
-                    user.NormalizedUserName = secretaria.Email.ToUpperInvariant();
 
                     var result = await _userManager.UpdateAsync(user);
                     if (!result.Succeeded)

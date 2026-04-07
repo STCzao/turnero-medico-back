@@ -18,11 +18,6 @@ namespace turnero_medico_backend.DTOs.PacienteDTOs
         [RegularExpression(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$", ErrorMessage = "El apellido solo puede contener letras y espacios")]
         public string Apellido { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "El email es obligatorio")]
-        [EmailAddress(ErrorMessage = "El formato del email no es válido")]
-        [StringLength(100, ErrorMessage = "El email no puede exceder 100 caracteres")]
-        public string Email { get; set; } = string.Empty;
-
         [Required(ErrorMessage = "El teléfono es obligatorio")]
         [RegularExpression(@"^[\d\s\-\+\(\)]{8,20}$", ErrorMessage = "El teléfono debe tener entre 8 y 20 caracteres (números, espacios, guiones, +, paréntesis)")]
         public string Telefono { get; set; } = string.Empty;

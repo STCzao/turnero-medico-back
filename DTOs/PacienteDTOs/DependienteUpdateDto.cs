@@ -4,7 +4,7 @@ namespace turnero_medico_backend.DTOs.PacienteDTOs
 {
     public class DependienteUpdateDto
     {
-        [Required]
+        [Required(ErrorMessage = "El ID es obligatorio")]
         public int Id { get; set; }
 
         [Required(ErrorMessage = "El nombre es obligatorio")]

@@ -228,7 +228,7 @@ namespace turnero_medico_backend.Tests.Services
         private static PacienteUpdateDto DtoActualizar() => new()
         {
             Id = 1, Nombre = "Juan", Apellido = "Perez",
-            Email = "juan@test.com", Telefono = "12345678",
+            Telefono = "12345678",
             FechaNacimiento = DateTime.UtcNow.AddYears(-30)
         };
 

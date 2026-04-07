@@ -89,7 +89,6 @@ namespace turnero_medico_backend.Tests.Services
         private DoctorUpdateDto DtoActualizar(int id = 1) => new()
         {
             Id = id, Nombre = "Carlos", Apellido = "Lopez",
-            Matricula = "MAT001", Email = "carlos@test.com",
             Telefono = "1122334455", EspecialidadId = 1
         };
 

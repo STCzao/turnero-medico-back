@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using turnero_medico_backend.DTOs.Validations;
 
 namespace turnero_medico_backend.DTOs.TurnoDTOs
 {
@@ -8,6 +9,7 @@ namespace turnero_medico_backend.DTOs.TurnoDTOs
     {
         [Required(ErrorMessage = "La fecha y hora del turno es obligatoria")]
         [DataType(DataType.DateTime)]
+        [FutureOrToday(ErrorMessage = "La fecha del turno debe ser hoy o en el futuro")]
         public DateTime FechaHora { get; set; }
 
         // Doctor asignado. Obligatorio si el paciente no eligió uno al solicitar.
