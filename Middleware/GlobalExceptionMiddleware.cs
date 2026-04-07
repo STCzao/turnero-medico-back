@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using turnero_medico_backend.Exceptions;
@@ -84,14 +85,14 @@ namespace turnero_medico_backend.Middleware
                     context.Response.StatusCode = StatusCodes.Status400BadRequest;
                     response.StatusCode = HttpStatusCode.BadRequest;
                     response.Message = "Argumentos inválidos o nulos";
-                    response.Detail = exception.Message;
+                    response.Detail = env.IsDevelopment() ? exception.Message : "Uno o más argumentos requeridos no fueron proporcionados.";
                     break;
 
                 case InvalidOperationException:
                     context.Response.StatusCode = StatusCodes.Status400BadRequest;
                     response.StatusCode = HttpStatusCode.BadRequest;
                     response.Message = "Operación inválida";
-                    response.Detail = exception.Message;
+                    response.Detail = env.IsDevelopment() ? exception.Message : "La operación no pudo completarse en el estado actual del recurso.";
                     break;
 
                 case UnauthorizedAccessException:
@@ -100,14 +101,14 @@ namespace turnero_medico_backend.Middleware
                     context.Response.StatusCode = StatusCodes.Status403Forbidden;
                     response.StatusCode = HttpStatusCode.Forbidden;
                     response.Message = "Acceso denegado";
-                    response.Detail = exception.Message;
+                    response.Detail = env.IsDevelopment() ? exception.Message : "No tenés permisos para realizar esta acción.";
                     break;
 
                 case KeyNotFoundException:
                     context.Response.StatusCode = StatusCodes.Status404NotFound;
                     response.StatusCode = HttpStatusCode.NotFound;
                     response.Message = "Recurso no encontrado";
-                    response.Detail = exception.Message;
+                    response.Detail = env.IsDevelopment() ? exception.Message : "El recurso solicitado no existe.";
                     break;
 
                 // Excepción genérica para todo lo demás
@@ -136,6 +137,7 @@ namespace turnero_medico_backend.Middleware
         public HttpStatusCode StatusCode { get; set; }
         public string Message { get; set; } = string.Empty;
         public string Detail { get; set; } = string.Empty;
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? StackTrace { get; set; }
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
     }
