@@ -9,6 +9,7 @@ namespace turnero_medico_backend.Repositories.Interfaces
         Task<IEnumerable<T>> GetAllAsync();
         Task<(IEnumerable<T> Items, int Total)> GetAllPagedAsync(int page, int pageSize);
         Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate);
+        Task<T?> FindFirstAsync(Expression<Func<T, bool>> predicate);
         Task<bool> ExistAsync(int id);
 
         // POST

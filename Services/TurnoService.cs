@@ -489,8 +489,7 @@ namespace turnero_medico_backend.Services
 
             if (userRole == "Paciente")
             {
-                var pacientes = await _pacienteRepository.FindAsync(p => p.UserId == userId);
-                var paciente = pacientes.FirstOrDefault()
+                var paciente = await _pacienteRepository.FindFirstAsync(p => p.UserId == userId)
                     ?? throw new InvalidOperationException("No se encontró un registro de paciente asociado a tu usuario.");
 
                 var turnos = await _turnoRepository.FindWithDetailsAsync(t =>
@@ -501,8 +500,7 @@ namespace turnero_medico_backend.Services
 
             if (userRole == "Doctor")
             {
-                var doctores = await _doctorRepository.FindAsync(d => d.UserId == userId);
-                var doctor = doctores.FirstOrDefault()
+                var doctor = await _doctorRepository.FindFirstAsync(d => d.UserId == userId)
                     ?? throw new InvalidOperationException("No se encontró un registro de doctor asociado a tu usuario.");
 
                 var turnos = await _turnoRepository.FindWithDetailsAsync(t =>
@@ -526,8 +524,7 @@ namespace turnero_medico_backend.Services
             if (userRole != "Doctor")
                 throw new UnauthorizedAccessException("Solo los doctores pueden consultar su agenda.");
 
-            var doctores = await _doctorRepository.FindAsync(d => d.UserId == userId);
-            var doctor = doctores.FirstOrDefault()
+            var doctor = await _doctorRepository.FindFirstAsync(d => d.UserId == userId)
                 ?? throw new InvalidOperationException("No se encontró un registro de doctor asociado a tu usuario.");
 
             var fechaInicio = DateTime.SpecifyKind(fecha.Date, DateTimeKind.Utc);

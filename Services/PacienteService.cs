@@ -91,8 +91,7 @@ namespace turnero_medico_backend.Services
             if (string.IsNullOrEmpty(userId))
                 throw new UnauthorizedAccessException("No se pudo obtener el ID del usuario autenticado");
 
-            var pacientes = await _pacienteRepository.FindAsync(p => p.UserId == userId);
-            var paciente = pacientes.FirstOrDefault();
+            var paciente = await _pacienteRepository.FindFirstAsync(p => p.UserId == userId);
 
             if (paciente == null)
                 return null;
@@ -313,8 +312,7 @@ namespace turnero_medico_backend.Services
             if (string.IsNullOrEmpty(userId))
                 throw new UnauthorizedAccessException("No se pudo obtener el ID del usuario autenticado.");
 
-            var pacientes = await _pacienteRepository.FindAsync(p => p.UserId == userId);
-            var paciente = pacientes.FirstOrDefault();
+            var paciente = await _pacienteRepository.FindFirstAsync(p => p.UserId == userId);
             if (paciente == null)
                 return null;
 

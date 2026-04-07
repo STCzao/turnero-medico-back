@@ -307,6 +307,132 @@ namespace turnero_medico_backend.Tests.Services
             await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.ConfirmarAsync(1, dto));
         }
 
+        [Fact]
+        public async Task ConfirmarAsync_PacienteIntentaConfirmar_LanzaUnauthorized()
+        {
+            SetupCurrentUser("Paciente", "user-paciente");
+
+            var turno = CrearTurnoBase(estado: EstadoTurno.SolicitudPendiente);
+            _turnoRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(turno);
+
+            var dto = new ConfirmarTurnoDto { FechaHora = DateTime.UtcNow.AddDays(1), DoctorId = 1 };
+
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _sut.ConfirmarAsync(1, dto));
+        }
+
+        [Fact]
+        public async Task ConfirmarAsync_SinDoctorEnTurnoNiEnDto_LanzaInvalidOperation()
+        {
+            SetupCurrentUser("Secretaria", "user-sec");
+
+            var turno = new Turno
+            {
+                Id = 1, PacienteId = 1, DoctorId = null,
+                EspecialidadId = 1, Motivo = "Control",
+                Estado = EstadoTurno.SolicitudPendiente,
+                CreatedByUserId = "user-1", CreatedAt = DateTime.UtcNow
+            };
+            _turnoRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(turno);
+
+            var dto = new ConfirmarTurnoDto { FechaHora = DateTime.UtcNow.AddDays(1), DoctorId = null };
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.ConfirmarAsync(1, dto));
+        }
+
+        [Fact]
+        public async Task ConfirmarAsync_DoctorConEspecialidadDistintaAlTurno_LanzaInvalidOperation()
+        {
+            SetupCurrentUser("Secretaria", "user-sec");
+
+            var turno = CrearTurnoBase(estado: EstadoTurno.SolicitudPendiente); // EspecialidadId = 1
+            var doctorOtraEsp = new Doctor
+            {
+                Id = 1, Nombre = "Dr", Apellido = "X",
+                Matricula = "M1", Dni = "11111111",
+                Email = "d@t.com", Telefono = "456",
+                EspecialidadId = 2 // distinta al turno
+            };
+
+            _turnoRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(turno);
+            _doctorRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(doctorOtraEsp);
+            _especialidadRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<int>()))
+                .ReturnsAsync((int id) => new Especialidad { Id = id, Nombre = $"Especialidad {id}" });
+
+            var dto = new ConfirmarTurnoDto
+            {
+                FechaHora = DateTime.UtcNow.AddDays(1),
+                DoctorId = 1
+            };
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.ConfirmarAsync(1, dto));
+        }
+
+        [Fact]
+        public async Task ConfirmarAsync_FueraDeHorarioAtencion_LanzaInvalidOperation()
+        {
+            SetupCurrentUser("Secretaria", "user-sec");
+
+            var turno = CrearTurnoBase(estado: EstadoTurno.SolicitudPendiente);
+            _turnoRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(turno);
+            _doctorRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(turno.Doctor!);
+            _especialidadRepoMock.Setup(r => r.GetByIdAsync(1))
+                .ReturnsAsync(new Especialidad { Id = 1, Nombre = "Cardiología" });
+
+            // Horario configurado solo para Lunes, pero la fecha es Martes
+            var martes = GetNextWeekday(DayOfWeek.Tuesday);
+            var fechaFueraDeHorario = DateTime.SpecifyKind(martes.Add(new TimeSpan(9, 0, 0)), DateTimeKind.Utc);
+
+            _dbContext.Horarios.Add(new Horario
+            {
+                Id = 1, DoctorId = 1, DiaSemana = (int)DayOfWeek.Monday,
+                HoraInicio = new TimeOnly(8, 0),
+                HoraFin = new TimeOnly(12, 0),
+                DuracionMinutos = 30
+            });
+            await _dbContext.SaveChangesAsync();
+
+            var dto = new ConfirmarTurnoDto { FechaHora = fechaFueraDeHorario, DoctorId = 1 };
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.ConfirmarAsync(1, dto));
+        }
+
+        [Fact]
+        public async Task ConfirmarAsync_ConflictoConTurnoConfirmadoExistente_LanzaInvalidOperation()
+        {
+            SetupCurrentUser("Secretaria", "user-sec");
+
+            var turno = CrearTurnoBase(estado: EstadoTurno.SolicitudPendiente);
+            _turnoRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(turno);
+            _doctorRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(turno.Doctor!);
+            _especialidadRepoMock.Setup(r => r.GetByIdAsync(1))
+                .ReturnsAsync(new Especialidad { Id = 1, Nombre = "Cardiología" });
+
+            var lunes = GetNextWeekday(DayOfWeek.Monday);
+            var fechaConflicto = DateTime.SpecifyKind(lunes.Add(new TimeSpan(9, 0, 0)), DateTimeKind.Utc);
+
+            _dbContext.Horarios.Add(new Horario
+            {
+                Id = 1, DoctorId = 1, DiaSemana = (int)DayOfWeek.Monday,
+                HoraInicio = new TimeOnly(8, 0),
+                HoraFin = new TimeOnly(12, 0),
+                DuracionMinutos = 30
+            });
+
+            // Turno confirmado del mismo doctor en el mismo slot
+            _dbContext.Turnos.Add(new Turno
+            {
+                Id = 99, DoctorId = 1, PacienteId = 2,
+                Estado = EstadoTurno.Confirmado,
+                FechaHora = fechaConflicto,
+                CreatedByUserId = "user-1"
+            });
+            await _dbContext.SaveChangesAsync();
+
+            var dto = new ConfirmarTurnoDto { FechaHora = fechaConflicto, DoctorId = 1 };
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.ConfirmarAsync(1, dto));
+        }
+
         // ── RECHAZAR ────────────────────────────────────────────
 
         [Fact]
@@ -496,6 +622,269 @@ namespace turnero_medico_backend.Tests.Services
             var dto = new TurnoUpdateDto { Id = 1, Estado = EstadoTurno.Confirmado };
 
             await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.UpdateAsync(1, dto));
+        }
+
+        // ── GET BY DOCTOR (ramas de autorización) ───────────────
+
+        [Fact]
+        public async Task GetByDoctorAsync_AdminPuedeVerTurnosDeOtroDoctor_RetornaLista()
+        {
+            SetupCurrentUser("Admin", "user-admin");
+
+            var turnos = new List<Turno> { CrearTurnoBase() };
+            _turnoRepoMock.Setup(r => r.FindWithDetailsAsync(It.IsAny<System.Linq.Expressions.Expression<Func<Turno, bool>>>()))
+                .ReturnsAsync(turnos);
+
+            var result = await _sut.GetByDoctorAsync(1);
+
+            Assert.Single(result);
+        }
+
+        [Fact]
+        public async Task GetByDoctorAsync_DoctorPuedeVerSusPropiosTurnos_RetornaLista()
+        {
+            SetupCurrentUser("Doctor", "user-doctor");
+
+            var doctor = new Doctor
+            {
+                Id = 1, Nombre = "Dr", Apellido = "Garcia",
+                Matricula = "M1", Dni = "11111111",
+                Email = "dr@t.com", Telefono = "456",
+                EspecialidadId = 1, UserId = "user-doctor"
+            };
+            _doctorRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(doctor);
+
+            var turnos = new List<Turno> { CrearTurnoBase() };
+            _turnoRepoMock.Setup(r => r.FindWithDetailsAsync(It.IsAny<System.Linq.Expressions.Expression<Func<Turno, bool>>>()))
+                .ReturnsAsync(turnos);
+
+            var result = await _sut.GetByDoctorAsync(1);
+
+            Assert.Single(result);
+        }
+
+        [Fact]
+        public async Task GetByDoctorAsync_DoctorAjenoAlDoctor_LanzaUnauthorized()
+        {
+            SetupCurrentUser("Doctor", "user-otro-doctor");
+
+            var doctor = new Doctor
+            {
+                Id = 1, Nombre = "Dr", Apellido = "Garcia",
+                Matricula = "M1", Dni = "11111111",
+                Email = "dr@t.com", Telefono = "456",
+                EspecialidadId = 1, UserId = "user-doctor" // distinto al usuario actual
+            };
+            _doctorRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(doctor);
+
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _sut.GetByDoctorAsync(1));
+        }
+
+        [Fact]
+        public async Task GetByDoctorAsync_PacienteIntentaConsultar_LanzaUnauthorized()
+        {
+            SetupCurrentUser("Paciente", "user-paciente");
+
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _sut.GetByDoctorAsync(1));
+        }
+
+        // ── GET BY ID (ramas de autorización) ───────────────────
+
+        [Fact]
+        public async Task GetByIdAsync_AdminPuedeVerCualquierTurno_RetornaDto()
+        {
+            SetupCurrentUser("Admin", "user-admin");
+
+            var turno = CrearTurnoBase();
+            _turnoRepoMock.Setup(r => r.GetByIdWithDetailsAsync(1)).ReturnsAsync(turno);
+
+            var result = await _sut.GetByIdAsync(1);
+
+            Assert.NotNull(result);
+            Assert.Equal(1, result.Id);
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_PacientePuedeVerSuPropiTurno_RetornaDto()
+        {
+            SetupCurrentUser("Paciente", "user-paciente");
+
+            var turno = CrearTurnoBase(); // PacienteId = 1
+            _turnoRepoMock.Setup(r => r.GetByIdWithDetailsAsync(1)).ReturnsAsync(turno);
+
+            _dbContext.Pacientes.Add(new Paciente
+            {
+                Id = 1, Nombre = "Juan", Apellido = "Perez",
+                Dni = "12345678", Email = "j@t.com", Telefono = "123",
+                FechaNacimiento = DateTime.UtcNow.AddYears(-30),
+                UserId = "user-paciente"
+            });
+            await _dbContext.SaveChangesAsync();
+
+            var result = await _sut.GetByIdAsync(1);
+
+            Assert.NotNull(result);
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_PacienteAjenoAlTurno_LanzaUnauthorized()
+        {
+            SetupCurrentUser("Paciente", "user-otro-paciente");
+
+            var turno = CrearTurnoBase(); // PacienteId = 1, UserId = "user-paciente"
+            _turnoRepoMock.Setup(r => r.GetByIdWithDetailsAsync(1)).ReturnsAsync(turno);
+
+            _dbContext.Pacientes.Add(new Paciente
+            {
+                Id = 1, Nombre = "Juan", Apellido = "Perez",
+                Dni = "12345678", Email = "j@t.com", Telefono = "123",
+                FechaNacimiento = DateTime.UtcNow.AddYears(-30),
+                UserId = "user-paciente"
+            });
+            await _dbContext.SaveChangesAsync();
+
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _sut.GetByIdAsync(1));
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_DoctorPuedeVerSuPropiTurno_RetornaDto()
+        {
+            SetupCurrentUser("Doctor", "user-doctor");
+
+            var turno = CrearTurnoBase(); // DoctorId = 1, Doctor.UserId = "user-doctor"
+            _turnoRepoMock.Setup(r => r.GetByIdWithDetailsAsync(1)).ReturnsAsync(turno);
+            _doctorRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(turno.Doctor!);
+
+            var result = await _sut.GetByIdAsync(1);
+
+            Assert.NotNull(result);
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_DoctorAjenoAlTurno_LanzaUnauthorized()
+        {
+            SetupCurrentUser("Doctor", "user-otro-doctor");
+
+            var turno = CrearTurnoBase(); // Doctor.UserId = "user-doctor"
+            _turnoRepoMock.Setup(r => r.GetByIdWithDetailsAsync(1)).ReturnsAsync(turno);
+            _doctorRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(turno.Doctor!);
+
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _sut.GetByIdAsync(1));
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_DoctorConTurnoSinDoctorAsignado_LanzaUnauthorized()
+        {
+            SetupCurrentUser("Doctor", "user-doctor");
+
+            var turno = CrearTurnoBase();
+            turno.DoctorId = null;
+            _turnoRepoMock.Setup(r => r.GetByIdWithDetailsAsync(1)).ReturnsAsync(turno);
+
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _sut.GetByIdAsync(1));
+        }
+
+        // ── GET HISTORIAL (ramas de autorización) ────────────────
+
+        [Fact]
+        public async Task GetHistorialAsync_AdminPuedeVerCualquierHistorial_RetornaCompletados()
+        {
+            SetupCurrentUser("Admin", "user-admin");
+
+            var turnoCompletado = CrearTurnoBase(estado: EstadoTurno.Completado);
+            _turnoRepoMock.Setup(r => r.FindWithDetailsAsync(It.IsAny<System.Linq.Expressions.Expression<Func<Turno, bool>>>()))
+                .ReturnsAsync(new List<Turno> { turnoCompletado });
+
+            var result = await _sut.GetHistorialAsync(1);
+
+            Assert.Single(result);
+        }
+
+        [Fact]
+        public async Task GetHistorialAsync_PacientePuedeVerSuHistorial_RetornaCompletados()
+        {
+            SetupCurrentUser("Paciente", "user-paciente");
+
+            _dbContext.Pacientes.Add(new Paciente
+            {
+                Id = 1, Nombre = "Juan", Apellido = "Perez",
+                Dni = "12345678", Email = "j@t.com", Telefono = "123",
+                FechaNacimiento = DateTime.UtcNow.AddYears(-30),
+                UserId = "user-paciente"
+            });
+            await _dbContext.SaveChangesAsync();
+
+            var turnoCompletado = CrearTurnoBase(estado: EstadoTurno.Completado);
+            _turnoRepoMock.Setup(r => r.FindWithDetailsAsync(It.IsAny<System.Linq.Expressions.Expression<Func<Turno, bool>>>()))
+                .ReturnsAsync(new List<Turno> { turnoCompletado });
+
+            var result = await _sut.GetHistorialAsync(1);
+
+            Assert.Single(result);
+        }
+
+        [Fact]
+        public async Task GetHistorialAsync_PacienteAjenoAlHistorial_LanzaUnauthorized()
+        {
+            SetupCurrentUser("Paciente", "user-otro-paciente");
+
+            _dbContext.Pacientes.Add(new Paciente
+            {
+                Id = 1, Nombre = "Juan", Apellido = "Perez",
+                Dni = "12345678", Email = "j@t.com", Telefono = "123",
+                FechaNacimiento = DateTime.UtcNow.AddYears(-30),
+                UserId = "user-paciente"
+            });
+            await _dbContext.SaveChangesAsync();
+
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _sut.GetHistorialAsync(1));
+        }
+
+        [Fact]
+        public async Task GetHistorialAsync_DoctorConTurnoCompartido_PuedeVerHistorial()
+        {
+            SetupCurrentUser("Doctor", "user-doctor");
+
+            _dbContext.Doctores.Add(new Doctor
+            {
+                Id = 1, Nombre = "Dr", Apellido = "Garcia",
+                Matricula = "M1", Dni = "11111111",
+                Email = "dr@t.com", Telefono = "456",
+                EspecialidadId = 1, UserId = "user-doctor"
+            });
+            _dbContext.Turnos.Add(new Turno
+            {
+                Id = 10, DoctorId = 1, PacienteId = 1,
+                Estado = EstadoTurno.Completado,
+                CreatedByUserId = "user-1"
+            });
+            await _dbContext.SaveChangesAsync();
+
+            var turnoCompletado = CrearTurnoBase(estado: EstadoTurno.Completado);
+            _turnoRepoMock.Setup(r => r.FindWithDetailsAsync(It.IsAny<System.Linq.Expressions.Expression<Func<Turno, bool>>>()))
+                .ReturnsAsync(new List<Turno> { turnoCompletado });
+
+            var result = await _sut.GetHistorialAsync(1);
+
+            Assert.Single(result);
+        }
+
+        [Fact]
+        public async Task GetHistorialAsync_DoctorSinTurnoConPaciente_LanzaUnauthorized()
+        {
+            SetupCurrentUser("Doctor", "user-doctor");
+
+            _dbContext.Doctores.Add(new Doctor
+            {
+                Id = 1, Nombre = "Dr", Apellido = "Garcia",
+                Matricula = "M1", Dni = "11111111",
+                Email = "dr@t.com", Telefono = "456",
+                EspecialidadId = 1, UserId = "user-doctor"
+            });
+            // Sin turnos compartidos entre doctor 1 y paciente 1
+            await _dbContext.SaveChangesAsync();
+
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _sut.GetHistorialAsync(1));
         }
 
         // ── Flujo completo: Solicitud → Confirmado → Completado ─
