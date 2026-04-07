@@ -1,5 +1,6 @@
 using AutoMapper;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using turnero_medico_backend.Data;
 using turnero_medico_backend.DTOs.Common;
 using turnero_medico_backend.DTOs.DoctorDTOs;
@@ -73,6 +74,19 @@ namespace turnero_medico_backend.Services
         {
             _ = await _especialidadRepository.GetByIdAsync(dto.EspecialidadId)
                 ?? throw new InvalidOperationException($"La especialidad con ID {dto.EspecialidadId} no existe.");
+
+            // IgnoreQueryFilters para detectar también soft-deleted con el mismo DNI o matrícula
+            var existeDni = await _dbContext.Doctores
+                .IgnoreQueryFilters()
+                .AnyAsync(d => d.Dni == dto.Dni.Trim());
+            if (existeDni)
+                throw new InvalidOperationException("Ya existe un doctor con ese DNI.");
+
+            var existeMatricula = await _dbContext.Doctores
+                .IgnoreQueryFilters()
+                .AnyAsync(d => d.Matricula == dto.Matricula.Trim());
+            if (existeMatricula)
+                throw new InvalidOperationException("Ya existe un doctor con esa matrícula.");
 
             var doctor = _mapper.Map<Doctor>(dto);
             var created = await _repository.AddAsync(doctor);

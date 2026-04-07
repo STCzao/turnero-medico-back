@@ -7,11 +7,6 @@ namespace turnero_medico_backend.DTOs.DoctorDTOs
         [Required(ErrorMessage = "El ID es obligatorio")]
         public int Id { get; set; }
 
-        [Required(ErrorMessage = "La matrícula es obligatoria")]
-        [StringLength(15, MinimumLength = 5, ErrorMessage = "La matrícula debe tener entre {2} y {1} caracteres")]
-        [RegularExpression(@"^[A-Za-z0-9]+$", ErrorMessage = "La matrícula solo puede contener letras y números")]
-        public string Matricula { get; set; } = string.Empty;
-
         [Required(ErrorMessage = "El nombre es obligatorio")]
         [StringLength(50, MinimumLength = 2, ErrorMessage = "El nombre debe tener entre {2} y {1} caracteres")]
         [RegularExpression(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$", ErrorMessage = "El nombre solo puede contener letras y espacios")]
@@ -25,11 +20,6 @@ namespace turnero_medico_backend.DTOs.DoctorDTOs
         [Required(ErrorMessage = "La especialidad es obligatoria")]
         [Range(1, int.MaxValue, ErrorMessage = "Debe seleccionar una especialidad válida")]
         public int EspecialidadId { get; set; }
-
-        [Required(ErrorMessage = "El email es obligatorio")]
-        [EmailAddress(ErrorMessage = "El formato del email no es válido")]
-        [StringLength(100, ErrorMessage = "El email no puede exceder 100 caracteres")]
-        public string Email { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "El teléfono es obligatorio")]
         [RegularExpression(@"^[\d\s\-\+\(\)]{8,20}$", ErrorMessage = "El teléfono debe tener entre 8 y 20 caracteres")]

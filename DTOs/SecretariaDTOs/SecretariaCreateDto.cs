@@ -20,7 +20,7 @@ public class SecretariaCreateDto
 
     [Required(ErrorMessage = "El email es obligatorio")]
     [EmailAddress(ErrorMessage = "El formato del email no es válido")]
-    [StringLength(256, ErrorMessage = "El email no puede exceder 256 caracteres")]
+    [StringLength(100, ErrorMessage = "El email no puede exceder 100 caracteres")]
     public string Email { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "El teléfono es obligatorio")]

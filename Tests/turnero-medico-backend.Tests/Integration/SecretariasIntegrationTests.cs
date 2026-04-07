@@ -42,5 +42,35 @@ namespace turnero_medico_backend.Tests.Integration
             var response = await _client.GetAsync("/api/secretarias/99999");
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
+
+        // ── /me — accesible por Secretaria, no por otros roles ──────
+
+        [Fact]
+        public async Task GetMe_ConRolSecretaria_NoRetorna403()
+        {
+            // Bug #5: [Authorize(Roles="Admin")] en clase + [Authorize(Roles="Secretaria")] en método
+            // se combinaban con AND → 403 garantizado para cualquier Secretaria.
+            // Después del fix la respuesta es 200 o 404 (sin registro vinculado), nunca 403.
+            _client.WithRole("Secretaria");
+            var response = await _client.GetAsync("/api/secretarias/me");
+            Assert.NotEqual(HttpStatusCode.Forbidden, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task GetMe_ConRolPaciente_Retorna403()
+        {
+            _client.WithRole("Paciente");
+            var response = await _client.GetAsync("/api/secretarias/me");
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task GetMe_ConRolAdmin_Retorna403()
+        {
+            // /me es exclusivo de Secretaria; Admin usa GetById con ID numérico.
+            _client.WithRole("Admin");
+            var response = await _client.GetAsync("/api/secretarias/me");
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        }
     }
 }

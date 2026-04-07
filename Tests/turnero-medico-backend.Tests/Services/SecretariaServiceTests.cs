@@ -81,10 +81,10 @@ namespace turnero_medico_backend.Tests.Services
             Telefono = "33445566"
         };
 
-        private SecretariaUpdateDto DtoActualizar(string email = "ana@test.com") => new()
+        private SecretariaUpdateDto DtoActualizar() => new()
         {
             Id = 1, Nombre = "Ana", Apellido = "Martinez",
-            Email = email, Telefono = "33445566"
+            Telefono = "33445566"
         };
 
         // ── CREATE ──────────────────────────────────────────────
@@ -140,23 +140,23 @@ namespace turnero_medico_backend.Tests.Services
         }
 
         [Fact]
-        public async Task UpdateAsync_ConCuentaVinculada_SincronizaDatosEnUsuario()
+        public async Task UpdateAsync_ConCuentaVinculada_SincronizaNombreApellidoEnUsuario()
         {
-            // Esta es la regla más importante: al actualizar una secretaria con cuenta,
-            // los datos (nombre, apellido, email) deben sincronizarse en AspNetUsers.
+            // Al actualizar una secretaria con cuenta, nombre y apellido deben sincronizarse
+            // en AspNetUsers. El email es inmutable y no se modifica via UpdateAsync.
             var secretaria = CrearSecretariaBase(userId: "user-sec");
             _secretariaRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(secretaria);
             _secretariaRepoMock.Setup(r => r.UpdateAsync(It.IsAny<Secretaria>())).ReturnsAsync(secretaria);
 
-            var user = new ApplicationUser { Id = "user-sec", Email = "viejo@test.com" };
+            var user = new ApplicationUser { Id = "user-sec", Email = "ana@test.com" };
             _userManagerMock.Setup(m => m.FindByIdAsync("user-sec")).ReturnsAsync(user);
             _userManagerMock.Setup(m => m.UpdateAsync(It.IsAny<ApplicationUser>()))
                 .ReturnsAsync(IdentityResult.Success);
 
-            await _sut.UpdateAsync(1, DtoActualizar("nuevo@test.com"));
+            await _sut.UpdateAsync(1, DtoActualizar());
 
             _userManagerMock.Verify(
-                m => m.UpdateAsync(It.Is<ApplicationUser>(u => u.Email == "nuevo@test.com")),
+                m => m.UpdateAsync(It.Is<ApplicationUser>(u => u.Nombre == "Ana" && u.Apellido == "Martinez")),
                 Times.Once);
         }
 
