@@ -204,14 +204,15 @@ builder.Services.AddCors(options =>
             .AllowCredentials();
     });
 
-    // Producción: sólo el frontend desplegado
+    // Producción: sólo los orígenes configurados (separados por coma)
     var frontendUrl = builder.Configuration["Cors:AllowedOrigin"];
     if (!string.IsNullOrWhiteSpace(frontendUrl))
     {
+        var allowedOrigins = frontendUrl.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         options.AddPolicy("AllowProduction", policy =>
         {
             policy
-                .WithOrigins(frontendUrl)
+                .WithOrigins(allowedOrigins)
                 .AllowAnyMethod()
                 .AllowAnyHeader()
                 .AllowCredentials();
